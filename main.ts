@@ -2,18 +2,19 @@ import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Set
 
 // Remember to rename these classes and interfaces!
 
-interface MyPluginSettings {
+interface ObsidianTranscriptionSettings {
 	mySetting: string;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
+const DEFAULT_SETTINGS: ObsidianTranscriptionSettings = {
 	mySetting: 'default'
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class ObsidianTranscription extends Plugin {
+	settings: ObsidianTranscriptionSettings;
 
 	async onload() {
+		console.log('Loading Obsidian Transcription');
 		await this.loadSettings();
 
 		// This creates an icon in the left ribbon.
@@ -79,7 +80,7 @@ export default class MyPlugin extends Plugin {
 	}
 
 	onunload() {
-
+		console.log('Unloading Obsidian Transcription');
 	}
 
 	async loadSettings() {
@@ -108,9 +109,9 @@ class SampleModal extends Modal {
 }
 
 class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+	plugin: ObsidianTranscription;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: ObsidianTranscription) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}

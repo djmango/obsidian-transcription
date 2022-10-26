@@ -1,15 +1,15 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidian-transcription",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "Obsidian plugin to create high-quality transcriptions from markdown linked audio files",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
-	"keywords": [],
-	"author": "",
+	"keywords": ["obsidian", "transcription", "audio", "markdown", "whisper", "speech", "recognition", "speech-to-text", "plugin"],
+	"author": "djmango",
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^16.11.6",
