@@ -8,7 +8,17 @@
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
-	"keywords": ["obsidian", "transcription", "audio", "markdown", "whisper", "speech", "recognition", "speech-to-text", "plugin"],
+	"keywords": [
+		"obsidian",
+		"transcription",
+		"audio",
+		"markdown",
+		"whisper",
+		"speech",
+		"recognition",
+		"speech-to-text",
+		"plugin"
+	],
 	"author": "djmango",
 	"license": "MIT",
 	"devDependencies": {
@@ -20,5 +30,8 @@
 		"obsidian": "latest",
 		"tslib": "2.4.0",
 		"typescript": "4.7.4"
+	},
+	"dependencies": {
+		"obsidian-community-lib": "^2.0.2"
 	}
 }
