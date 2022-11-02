@@ -54,28 +54,19 @@ export default class ObsidianTranscription extends Plugin {
 					const data = new Blob([await this.app.vault.adapter.readBinary(fileToTranscribe.path)]);
 					formData.append('audio_file', data);
 
-					fetch('http://djmango-bruh:9000/asr?task=transcribe&language=en', {
+					const options: RequestUrlParam = {
 						method: 'POST',
-						body: formData,
-						mode: 'no-cors'
-					}).then(response => {
+						url: 'http://djmango-bruh:9000/asr?task=transcribe&language=en',
+						// contentType: 'multipart/form-data',
+						// body: formData
+						body: await this.app.vault.adapter.readBinary(fileToTranscribe.path)
+					};
+
+					requestUrl(options).then((response) => {
 						console.log(response);
-					}).catch(error => {
-						console.log(error);
+					}).catch((error) => {
+						console.error(error);
 					});
-
-					// const options: RequestUrlParam = {
-					// 	method: 'POST',
-					// 	url: 'http://djmango-bruh:9000/asr?task=transcribe&language=en',
-					// 	contentType: 'multipart/form-data',
-					// 	body: formData
-					// };
-
-					// requestUrl(options).then((response) => {
-					// 	console.log(response);
-					// }).catch((error) => {
-					// 	console.error(error);
-					// });
 				}
 			}
 		});
