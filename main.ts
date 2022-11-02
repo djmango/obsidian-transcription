@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs';
 import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TAbstractFile, requestUrl, RequestUrlParam, getBlobArrayBuffer } from 'obsidian';
 import { appendBuffer } from 'utils';
 
@@ -56,22 +57,16 @@ export default class ObsidianTranscription extends Plugin {
 					formData.append('audio_file', data);
 
 
-					const pre_string = `------WebKitFormBoundary9j03XOhcFaGQuT4Q
-Content-Disposition: form-data; name="audio_file"; filename="blob"
-Content-Type: application/octet-stream
+					const pre_string = "------WebKitFormBoundary9j03XOhcFaGQuT4Q\r\nContent-Disposition: form-data; name=\"audio_file\"; filename=\"blob\"\r\nContent-Type: \"application/octet-stream\"\r\n\r\n";
+					const post_string = "\r\n------WebKitFormBoundary9j03XOhcFaGQuT4Q--"
 
-`
 					const pre_string_encoded = new TextEncoder().encode(pre_string);
-					// let concated = appendBuffer(pre_string_encoded, await getBlobArrayBuffer(data));
-
-					const post_string = `
-------WebKitFormBoundary9j03XOhcFaGQuT4Q--
-`
 					const post_string_encoded = new TextEncoder().encode(post_string);
-					// concated = appendBuffer(concated, post_string_encoded);
 
 					const concatenated = await new Blob([pre_string_encoded, await getBlobArrayBuffer(data), post_string_encoded]).arrayBuffer()
 
+					// const postData = "------WebKitFormBoundary7MA4YWxkTrZu0gW\r\nContent-Disposition: form-data; name=\"audio_file\"; filename=\"Recording 20221027142228.webm\"\r\nContent-Type: \"{Insert_File_Content_Type}\"\r\n\r\n" + readFileSync('/Users/djmango/github/test-vault/02 Files/Recording 20221027142228.webm') + "\r\n------WebKitFormBoundary7MA4YWxkTrZu0gW--";
+					// const contentTypeString = "multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW";
 
 					const options: RequestUrlParam = {
 						method: 'POST',
@@ -80,7 +75,9 @@ Content-Type: application/octet-stream
 						// body: formData
 						// body: await this.app.vault.adapter.readBinary(fileToTranscribe.path)
 						contentType: 'multipart/form-data; boundary=----WebKitFormBoundary9j03XOhcFaGQuT4Q',
-						body: concatenated 
+						body: concatenated
+						// contentType: contentTypeString,
+						// body: postData
 					};
 
 					requestUrl(options).then((response) => {
