@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TAbstractFile, Vault } from 'obsidian';
+import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TAbstractFile, requestUrl, RequestUrlParam } from 'obsidian';
 
 interface ObsidianTranscriptionSettings {
 	transcribeFileExtensions: string;
@@ -18,13 +18,13 @@ export default class ObsidianTranscription extends Plugin {
 		this.addCommand({
 			id: 'obsidian-transcription-transcribe-all-in-view',
 			name: 'Transcribe all audio files in view',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
+			editorCallback: async (editor: Editor, view: MarkdownView) => {
 				// Get the current filepath
 				const markdownFilePath = view.file.path;
 				console.log('Transcribing all audio files in ' + markdownFilePath);
-				
+
 				// Get all linked files in the markdown file
-				const filesLinked = Object.keys(view.app.metadataCache.resolvedLinks[markdownFilePath]);
+				const filesLinked = Object.keys(this.app.metadataCache.resolvedLinks[markdownFilePath]);
 
 				// Now that we have all the files linked in the markdown file, we need to filter them by the file extensions we want to transcribe
 				const filesToTranscribe: TAbstractFile[] = [];
@@ -45,10 +45,29 @@ export default class ObsidianTranscription extends Plugin {
 					}
 					filesToTranscribe.push(linkedFile)
 				}
-				
+
 				// Now that we have all the files to transcribe, we can transcribe them
 				for (const fileToTranscribe of filesToTranscribe) {
 					console.log('Transcribing ' + fileToTranscribe.path);
+
+					const formData = new FormData();
+					const data = new Blob([await this.app.vault.adapter.readBinary(fileToTranscribe.path)]);
+					formData.append('audio_file', data);
+
+					const options: RequestUrlParam = {
+						method: 'POST',
+						url: 'http://djmango-bruh:9000/asr?task=transcribe&language=en',
+						contentType: 'multipart/form-data',
+						body: formData 
+					};
+
+					// fetch()
+
+					requestUrl(options).then((response) => {
+						console.log(response);
+					}).catch((error) => {
+						console.error(error);
+					});
 				}
 			}
 		});
