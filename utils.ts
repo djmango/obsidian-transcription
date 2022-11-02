@@ -55,9 +55,6 @@ async function collect(iterable: any): Promise<Uint8Array> {
     const result = new Uint8Array(size);
     let nextIndex = 0;
     for (const buffer of buffers) {
-        console.log(size)
-        console.log(nextIndex);
-        console.log(result)
         result.set(buffer, nextIndex);
         nextIndex += buffer.byteLength;
     }

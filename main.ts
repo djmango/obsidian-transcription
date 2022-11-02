@@ -65,8 +65,8 @@ Content-Type: application/octet-stream
 					// let concated = appendBuffer(pre_string_encoded, await getBlobArrayBuffer(data));
 
 					const post_string = `
-					------WebKitFormBoundary9j03XOhcFaGQuT4Q--
-					`
+------WebKitFormBoundary9j03XOhcFaGQuT4Q--
+`
 					const post_string_encoded = new TextEncoder().encode(post_string);
 					// concated = appendBuffer(concated, post_string_encoded);
 
