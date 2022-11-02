@@ -1,4 +1,5 @@
-import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TAbstractFile, requestUrl, RequestUrlParam } from 'obsidian';
+import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TAbstractFile, requestUrl, RequestUrlParam, getBlobArrayBuffer } from 'obsidian';
+import { appendBuffer } from 'utils';
 
 interface ObsidianTranscriptionSettings {
 	transcribeFileExtensions: string;
@@ -54,12 +55,32 @@ export default class ObsidianTranscription extends Plugin {
 					const data = new Blob([await this.app.vault.adapter.readBinary(fileToTranscribe.path)]);
 					formData.append('audio_file', data);
 
+
+					const pre_string = `------WebKitFormBoundary9j03XOhcFaGQuT4Q
+Content-Disposition: form-data; name="audio_file"; filename="blob"
+Content-Type: application/octet-stream
+
+`
+					const pre_string_encoded = new TextEncoder().encode(pre_string);
+					// let concated = appendBuffer(pre_string_encoded, await getBlobArrayBuffer(data));
+
+					const post_string = `
+					------WebKitFormBoundary9j03XOhcFaGQuT4Q--
+					`
+					const post_string_encoded = new TextEncoder().encode(post_string);
+					// concated = appendBuffer(concated, post_string_encoded);
+
+					const concatenated = await new Blob([pre_string_encoded, await getBlobArrayBuffer(data), post_string_encoded]).arrayBuffer()
+
+
 					const options: RequestUrlParam = {
 						method: 'POST',
 						url: 'http://djmango-bruh:9000/asr?task=transcribe&language=en',
 						// contentType: 'multipart/form-data',
 						// body: formData
-						body: await this.app.vault.adapter.readBinary(fileToTranscribe.path)
+						// body: await this.app.vault.adapter.readBinary(fileToTranscribe.path)
+						contentType: 'multipart/form-data; boundary=----WebKitFormBoundary9j03XOhcFaGQuT4Q',
+						body: concatenated 
 					};
 
 					requestUrl(options).then((response) => {
