@@ -1,6 +1,4 @@
-import { readFileSync } from 'fs';
 import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TAbstractFile, requestUrl, RequestUrlParam, getBlobArrayBuffer } from 'obsidian';
-import { appendBuffer } from 'utils';
 
 interface ObsidianTranscriptionSettings {
 	transcribeFileExtensions: string;
@@ -52,32 +50,27 @@ export default class ObsidianTranscription extends Plugin {
 				for (const fileToTranscribe of filesToTranscribe) {
 					console.log('Transcribing ' + fileToTranscribe.path);
 
-					const formData = new FormData();
 					const data = new Blob([await this.app.vault.adapter.readBinary(fileToTranscribe.path)]);
-					formData.append('audio_file', data);
 
+					// https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
+					const N = 16 // The length of our random boundry string
+					const randomBoundryString = "djmangoBoundry" + Array(N+1).join((Math.random().toString(36)+'00000000000000000').slice(2, 18)).slice(0, N) 
 
-					const pre_string = "------WebKitFormBoundary9j03XOhcFaGQuT4Q\r\nContent-Disposition: form-data; name=\"audio_file\"; filename=\"blob\"\r\nContent-Type: \"application/octet-stream\"\r\n\r\n";
-					const post_string = "\r\n------WebKitFormBoundary9j03XOhcFaGQuT4Q--"
-
+					// All of this nonsense is because the Obsidian API requestURL only supports string data or an unnamed blob, not key-value formdata
+					// Essentially what we're doing here is constructing a multipart/form-data payload manually as a string
+					const pre_string = `------${randomBoundryString}\r\nContent-Disposition: form-data; name="audio_file"; filename="blob"\r\nContent-Type: "application/octet-stream"\r\n\r\n`;
+					const post_string = `\r\n------${randomBoundryString}--`
+					
 					const pre_string_encoded = new TextEncoder().encode(pre_string);
 					const post_string_encoded = new TextEncoder().encode(post_string);
 
 					const concatenated = await new Blob([pre_string_encoded, await getBlobArrayBuffer(data), post_string_encoded]).arrayBuffer()
 
-					// const postData = "------WebKitFormBoundary7MA4YWxkTrZu0gW\r\nContent-Disposition: form-data; name=\"audio_file\"; filename=\"Recording 20221027142228.webm\"\r\nContent-Type: \"{Insert_File_Content_Type}\"\r\n\r\n" + readFileSync('/Users/djmango/github/test-vault/02 Files/Recording 20221027142228.webm') + "\r\n------WebKitFormBoundary7MA4YWxkTrZu0gW--";
-					// const contentTypeString = "multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW";
-
 					const options: RequestUrlParam = {
 						method: 'POST',
 						url: 'http://djmango-bruh:9000/asr?task=transcribe&language=en',
-						// contentType: 'multipart/form-data',
-						// body: formData
-						// body: await this.app.vault.adapter.readBinary(fileToTranscribe.path)
-						contentType: 'multipart/form-data; boundary=----WebKitFormBoundary9j03XOhcFaGQuT4Q',
+						contentType: `multipart/form-data; boundary=----${randomBoundryString}`,
 						body: concatenated
-						// contentType: contentTypeString,
-						// body: postData
 					};
 
 					requestUrl(options).then((response) => {
