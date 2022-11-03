@@ -50,22 +50,28 @@ export default class ObsidianTranscription extends Plugin {
 				for (const fileToTranscribe of filesToTranscribe) {
 					console.log('Transcribing ' + fileToTranscribe.path);
 
-					const data = new Blob([await this.app.vault.adapter.readBinary(fileToTranscribe.path)]);
-
+					// This next block is a workaround to current Obsidian API limitations: requestURL only supports string data or an unnamed blob, not key-value formdata
+					// Essentially what we're doing here is constructing a multipart/form-data payload manually as a string and then passing it to requestURL
+					// I believe this to be equivilent to the following curl command: curl --location --request POST 'http://djmango-bruh:9000/asr?task=transcribe&language=en' --form 'audio_file=@"test-vault/02 Files/Recording.webm"'
+					
+					// Generate the form data payload boundry string, it can be arbitrary, I'm just using a random string here
+					// https://stackoverflow.com/questions/3508338/what-is-the-boundary-in-multipart-form-data
 					// https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
 					const N = 16 // The length of our random boundry string
 					const randomBoundryString = "djmangoBoundry" + Array(N+1).join((Math.random().toString(36)+'00000000000000000').slice(2, 18)).slice(0, N) 
-
-					// All of this nonsense is because the Obsidian API requestURL only supports string data or an unnamed blob, not key-value formdata
-					// Essentially what we're doing here is constructing a multipart/form-data payload manually as a string
+					
+					// Construct the form data payload as a string
 					const pre_string = `------${randomBoundryString}\r\nContent-Disposition: form-data; name="audio_file"; filename="blob"\r\nContent-Type: "application/octet-stream"\r\n\r\n`;
 					const post_string = `\r\n------${randomBoundryString}--`
 					
+					// Convert the form data payload to a blob by concatenating the pre_string, the file data, and the post_string, and then return the blob as an array buffer
 					const pre_string_encoded = new TextEncoder().encode(pre_string);
+					const data = new Blob([await this.app.vault.adapter.readBinary(fileToTranscribe.path)]);
 					const post_string_encoded = new TextEncoder().encode(post_string);
-
 					const concatenated = await new Blob([pre_string_encoded, await getBlobArrayBuffer(data), post_string_encoded]).arrayBuffer()
 
+					// Now that we have the form data payload as an array buffer, we can pass it to requestURL
+					// We also need to set the content type to multipart/form-data and pass in the boundry string
 					const options: RequestUrlParam = {
 						method: 'POST',
 						url: 'http://djmango-bruh:9000/asr?task=transcribe&language=en',
