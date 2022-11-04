@@ -1,4 +1,5 @@
-import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TAbstractFile, requestUrl, RequestUrlParam, getBlobArrayBuffer } from 'obsidian';
+import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, requestUrl, RequestUrlParam, getBlobArrayBuffer, TFile } from 'obsidian';
+import { getAllLinesFromFile } from 'utils';
 
 interface ObsidianTranscriptionSettings {
 	transcribeFileExtensions: string;
@@ -27,7 +28,7 @@ export default class ObsidianTranscription extends Plugin {
 				const filesLinked = Object.keys(this.app.metadataCache.resolvedLinks[markdownFilePath]);
 
 				// Now that we have all the files linked in the markdown file, we need to filter them by the file extensions we want to transcribe
-				const filesToTranscribe: TAbstractFile[] = [];
+				const filesToTranscribe: TFile[] = [];
 				for (const linkedFilePath of filesLinked) {
 					const linkedFileExtension = linkedFilePath.split('.').pop();
 					if (linkedFileExtension === undefined || !this.settings.transcribeFileExtensions.split(',').includes(linkedFileExtension)) {
@@ -38,12 +39,12 @@ export default class ObsidianTranscription extends Plugin {
 					// We now know that the file extension is in the list of transcribeable file extensions
 					const linkedFile = this.app.vault.getAbstractFileByPath(linkedFilePath);
 
-					// If the file is not found, we skip it
-					if (linkedFile === null) {
+					// Validate that we are dealing with a file and add it to the list of verified files to transcribe 
+					if (linkedFile instanceof TFile) filesToTranscribe.push(linkedFile);
+					else {
 						console.log('Could not find file ' + linkedFilePath);
 						continue;
 					}
-					filesToTranscribe.push(linkedFile)
 				}
 
 				// Now that we have all the files to transcribe, we can transcribe them
@@ -53,20 +54,21 @@ export default class ObsidianTranscription extends Plugin {
 					// This next block is a workaround to current Obsidian API limitations: requestURL only supports string data or an unnamed blob, not key-value formdata
 					// Essentially what we're doing here is constructing a multipart/form-data payload manually as a string and then passing it to requestURL
 					// I believe this to be equivilent to the following curl command: curl --location --request POST 'http://djmango-bruh:9000/asr?task=transcribe&language=en' --form 'audio_file=@"test-vault/02 Files/Recording.webm"'
-					
+
 					// Generate the form data payload boundry string, it can be arbitrary, I'm just using a random string here
 					// https://stackoverflow.com/questions/3508338/what-is-the-boundary-in-multipart-form-data
 					// https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
 					const N = 16 // The length of our random boundry string
-					const randomBoundryString = "djmangoBoundry" + Array(N+1).join((Math.random().toString(36)+'00000000000000000').slice(2, 18)).slice(0, N) 
-					
+					const randomBoundryString = "djmangoBoundry" + Array(N + 1).join((Math.random().toString(36) + '00000000000000000').slice(2, 18)).slice(0, N)
+
 					// Construct the form data payload as a string
 					const pre_string = `------${randomBoundryString}\r\nContent-Disposition: form-data; name="audio_file"; filename="blob"\r\nContent-Type: "application/octet-stream"\r\n\r\n`;
 					const post_string = `\r\n------${randomBoundryString}--`
-					
+
 					// Convert the form data payload to a blob by concatenating the pre_string, the file data, and the post_string, and then return the blob as an array buffer
 					const pre_string_encoded = new TextEncoder().encode(pre_string);
-					const data = new Blob([await this.app.vault.adapter.readBinary(fileToTranscribe.path)]);
+					// const data = new Blob([await this.app.vault.adapter.readBinary(fileToTranscribe.path)]);
+					const data = new Blob([await this.app.vault.readBinary(fileToTranscribe)]);
 					const post_string_encoded = new TextEncoder().encode(post_string);
 					const concatenated = await new Blob([pre_string_encoded, await getBlobArrayBuffer(data), post_string_encoded]).arrayBuffer()
 
@@ -79,8 +81,39 @@ export default class ObsidianTranscription extends Plugin {
 						body: concatenated
 					};
 
-					requestUrl(options).then((response) => {
+					requestUrl(options).then(async (response) => {
 						console.log(response);
+						const transcription = response.json.text;
+						console.log(transcription);
+
+						const content = await this.app.vault.read(view.file);
+						const fileLines = getAllLinesFromFile(content);
+
+						const fileLinkString = `[[${fileToTranscribe.name}]]`;
+
+						console.log(fileLinkString)
+						// Iterate through the lines of the file and find the line that contains the file link
+						let fileLinkLineIndex: number | undefined = undefined;
+						for (const line of fileLines) {
+							console.log(line);
+							if (line.includes(fileLinkString)) {
+								fileLinkLineIndex = fileLines.indexOf(line);
+								break;
+							}
+						}
+
+						if (fileLinkLineIndex === undefined) {
+							console.log('Could not find transcription line for ' + fileToTranscribe.name + ' in ' + view.file.name);
+							return;
+						}
+
+						// Now that we have the line index, we can insert the transcription after the file link
+						// fileLines.splice(fileLinkLineIndex + 1, 0, transcription);
+						fileLines[fileLinkLineIndex] = fileLines[fileLinkLineIndex] + '\n' + transcription;
+
+						// Now that we have the file lines with the transcription, we can write the file
+						await this.app.vault.modify(view.file, fileLines.join('\n'));
+
 					}).catch((error) => {
 						console.error(error);
 					});
