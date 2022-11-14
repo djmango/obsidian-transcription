@@ -1,20 +1,20 @@
 import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, requestUrl, RequestUrlParam, getBlobArrayBuffer, TFile, Notice } from 'obsidian';
 import { getAllLinesFromFile } from 'utils';
 
-interface ObsidianTranscriptionSettings {
+interface TranscriptionSettings {
 	transcribeFileExtensions: string;
 	whisperASRUrl: string;
 	debug: boolean;
 }
 
-const DEFAULT_SETTINGS: ObsidianTranscriptionSettings = {
+const DEFAULT_SETTINGS: TranscriptionSettings = {
 	transcribeFileExtensions: 'mp3,wav,webm',
 	whisperASRUrl: 'http://localhost:9000',
 	debug: false
 }
 
-export default class ObsidianTranscription extends Plugin {
-	settings: ObsidianTranscriptionSettings;
+export default class Transcription extends Plugin {
+	settings: TranscriptionSettings;
 
 	async onload() {
 		await this.loadSettings();
@@ -128,7 +128,7 @@ export default class ObsidianTranscription extends Plugin {
 		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new ObsidianTranscriptionSettingTab(this.app, this));
+		this.addSettingTab(new TranscriptionSettingTab(this.app, this));
 	}
 
 	onunload() {
@@ -144,10 +144,10 @@ export default class ObsidianTranscription extends Plugin {
 	}
 }
 
-class ObsidianTranscriptionSettingTab extends PluginSettingTab {
-	plugin: ObsidianTranscription;
+class TranscriptionSettingTab extends PluginSettingTab {
+	plugin: Transcription;
 
-	constructor(app: App, plugin: ObsidianTranscription) {
+	constructor(app: App, plugin: Transcription) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
