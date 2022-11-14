@@ -1,20 +1,24 @@
-import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, requestUrl, RequestUrlParam, getBlobArrayBuffer, TFile } from 'obsidian';
+import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, requestUrl, RequestUrlParam, getBlobArrayBuffer, TFile, Notice } from 'obsidian';
 import { getAllLinesFromFile } from 'utils';
 
 interface ObsidianTranscriptionSettings {
 	transcribeFileExtensions: string;
+	whisperASRUrl: string;
+	debug: boolean;
 }
 
 const DEFAULT_SETTINGS: ObsidianTranscriptionSettings = {
-	transcribeFileExtensions: 'mp3,wav,webm'
+	transcribeFileExtensions: 'mp3,wav,webm',
+	whisperASRUrl: 'http://localhost:9000',
+	debug: false
 }
 
 export default class ObsidianTranscription extends Plugin {
 	settings: ObsidianTranscriptionSettings;
 
 	async onload() {
-		console.log('Loading Obsidian Transcription');
 		await this.loadSettings();
+		if (this.settings.debug) console.log('Loading Obsidian Transcription');
 
 		this.addCommand({
 			id: 'obsidian-transcription-transcribe-all-in-view',
@@ -22,7 +26,8 @@ export default class ObsidianTranscription extends Plugin {
 			editorCallback: async (editor: Editor, view: MarkdownView) => {
 				// Get the current filepath
 				const markdownFilePath = view.file.path;
-				console.log('Transcribing all audio files in ' + markdownFilePath);
+				if (this.settings.debug) console.log('Transcribing all audio files in ' + markdownFilePath);
+				new Notice('Transcribing all audio files in ' + view.file.name, 3000);
 
 				// Get all linked files in the markdown file
 				const filesLinked = Object.keys(this.app.metadataCache.resolvedLinks[markdownFilePath]);
@@ -32,7 +37,7 @@ export default class ObsidianTranscription extends Plugin {
 				for (const linkedFilePath of filesLinked) {
 					const linkedFileExtension = linkedFilePath.split('.').pop();
 					if (linkedFileExtension === undefined || !this.settings.transcribeFileExtensions.split(',').includes(linkedFileExtension)) {
-						console.log('Skipping ' + linkedFilePath + ' because the file extension is not in the list of transcribeable file extensions');
+						if (this.settings.debug) console.log('Skipping ' + linkedFilePath + ' because the file extension is not in the list of transcribeable file extensions');
 						continue;
 					}
 
@@ -42,14 +47,14 @@ export default class ObsidianTranscription extends Plugin {
 					// Validate that we are dealing with a file and add it to the list of verified files to transcribe 
 					if (linkedFile instanceof TFile) filesToTranscribe.push(linkedFile);
 					else {
-						console.log('Could not find file ' + linkedFilePath);
+						if (this.settings.debug) console.log('Could not find file ' + linkedFilePath);
 						continue;
 					}
 				}
 
 				// Now that we have all the files to transcribe, we can transcribe them
 				for (const fileToTranscribe of filesToTranscribe) {
-					console.log('Transcribing ' + fileToTranscribe.path);
+					if (this.settings.debug) console.log('Transcribing ' + fileToTranscribe.path);
 
 					// This next block is a workaround to current Obsidian API limitations: requestURL only supports string data or an unnamed blob, not key-value formdata
 					// Essentially what we're doing here is constructing a multipart/form-data payload manually as a string and then passing it to requestURL
@@ -76,46 +81,47 @@ export default class ObsidianTranscription extends Plugin {
 					// We also need to set the content type to multipart/form-data and pass in the boundry string
 					const options: RequestUrlParam = {
 						method: 'POST',
-						url: 'http://djmango-bruh:9000/asr?task=transcribe&language=en',
+						url: `${this.settings.whisperASRUrl}/asr?task=transcribe&language=en`,
 						contentType: `multipart/form-data; boundary=----${randomBoundryString}`,
 						body: concatenated
 					};
 
 					requestUrl(options).then(async (response) => {
-						console.log(response);
+						if (this.settings.debug) console.log(response);
 						const transcription = response.json.text;
-						console.log(transcription);
+						if (this.settings.debug) console.log(transcription);
 
-						const content = await this.app.vault.read(view.file);
-						const fileLines = getAllLinesFromFile(content);
+						const markdownFileLines = getAllLinesFromFile(await this.app.vault.read(view.file));
+						const fileLinkString = `[[${fileToTranscribe.name}]]`; // This is the string that is used to link the audio file in the markdown file. There are potentially other ways to link the file, but this is the only one I know of 
 
-						const fileLinkString = `[[${fileToTranscribe.name}]]`;
-
-						console.log(fileLinkString)
-						// Iterate through the lines of the file and find the line that contains the file link
+						// Iterate through the lines of the markdown file and find the line that contains the file link
 						let fileLinkLineIndex: number | undefined = undefined;
-						for (const line of fileLines) {
-							console.log(line);
+						for (const line of markdownFileLines) {
 							if (line.includes(fileLinkString)) {
-								fileLinkLineIndex = fileLines.indexOf(line);
+								fileLinkLineIndex = markdownFileLines.indexOf(line);
 								break;
 							}
 						}
 
 						if (fileLinkLineIndex === undefined) {
-							console.log('Could not find transcription line for ' + fileToTranscribe.name + ' in ' + view.file.name);
+							if (this.settings.debug) console.log('Could not find transcription line for ' + fileToTranscribe.name + ' in ' + view.file.name);
 							return;
 						}
 
-						// Now that we have the line index, we can insert the transcription after the file link
-						// fileLines.splice(fileLinkLineIndex + 1, 0, transcription);
-						fileLines[fileLinkLineIndex] = fileLines[fileLinkLineIndex] + '\n' + transcription;
+						// Now that we have the line index of the file link, we can insert the transcription line after it. Potential for custom format here
+						markdownFileLines[fileLinkLineIndex] = markdownFileLines[fileLinkLineIndex] + '\n' + transcription;
 
 						// Now that we have the file lines with the transcription, we can write the file
-						await this.app.vault.modify(view.file, fileLines.join('\n'));
+						await this.app.vault.modify(view.file, markdownFileLines.join('\n'));
 
 					}).catch((error) => {
-						console.error(error);
+						if (this.settings.debug) {
+							console.error(error);
+							new Notice('Error transcribing file ' + fileToTranscribe.name + ': ' + error);
+						}
+						else {
+							new Notice('Error transcribing file, enable debug mode to see more');
+						}
 					});
 				}
 			}
@@ -126,7 +132,7 @@ export default class ObsidianTranscription extends Plugin {
 	}
 
 	onunload() {
-		console.log('Unloading Obsidian Transcription');
+		if (this.settings.debug) console.log('Unloading Obsidian Transcription');
 	}
 
 	async loadSettings() {
@@ -154,14 +160,34 @@ class ObsidianTranscriptionSettingTab extends PluginSettingTab {
 		containerEl.createEl('h2', { text: 'Settings for Obsidian Transcription' });
 
 		new Setting(containerEl)
+			.setName('Whisper ASR URL')
+			.setDesc('The URL of the Whisper ASR server: https://github.com/ahmetoner/whisper-asr-webservice')
+			.addText(text => text
+				.setPlaceholder(DEFAULT_SETTINGS.whisperASRUrl)
+				.setValue(this.plugin.settings.whisperASRUrl)
+				.onChange(async (value) => {
+					this.plugin.settings.whisperASRUrl = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
 			.setName('Allowed file extensions')
 			.setDesc('Comma-separated list of file extensions to transcribe')
 			.addText(text => text
-				.setPlaceholder('mp3,wav,webm')
+				.setPlaceholder(DEFAULT_SETTINGS.transcribeFileExtensions)
 				.setValue(this.plugin.settings.transcribeFileExtensions)
 				.onChange(async (value) => {
-					console.log('Allowed file extensions: ' + value);
 					this.plugin.settings.transcribeFileExtensions = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Debug mode')
+			.setDesc('Enable debug mode to see more console logs')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.debug)
+				.onChange(async (value) => {
+					this.plugin.settings.debug = value;
 					await this.plugin.saveSettings();
 				}));
 	}
