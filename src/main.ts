@@ -1,6 +1,6 @@
 import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, requestUrl, RequestUrlParam, getBlobArrayBuffer, TFile, Notice } from 'obsidian';
-import { TranscriptionEngine } from 'transcribe';
-import { getAllLinesFromFile } from 'utils';
+import { TranscriptionEngine } from 'src/transcribe';
+import { getAllLinesFromFile } from 'src/utils';
 
 interface TranscriptionSettings {
 	transcribeFileExtensions: string;
@@ -75,7 +75,10 @@ export default class Transcription extends Plugin {
 						}
 
 						if (fileLinkLineIndex === undefined) {
-							if (this.settings.debug) console.log('Could not find transcription line for ' + fileToTranscribe.name + ' in ' + view.file.name);
+							if (this.settings.debug) {
+								console.log('Could not find transcription line for ' + fileToTranscribe.name + ' in ' + view.file.name);
+								new Notice('Could not find transcription line for ' + fileToTranscribe.name + ' in ' + view.file.name, 3000);
+							}
 							return;
 						}
 

@@ -1,11 +1,12 @@
-import { TranscriptionSettings } from "main";
+import { TranscriptionSettings } from "src/main";
 import { getBlobArrayBuffer, requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
+import { randomString } from "src/utils";
 
 // This class is the parent for transcription engines. It takes settings and a file as an input and returns a transcription as a string
 export class TranscriptionEngine {
     settings: TranscriptionSettings;
     vault: Vault;
-    transcription_engine: (file: TFile) => Promise<string>; 
+    transcription_engine: (file: TFile) => Promise<string>;
 
     constructor(settings: TranscriptionSettings, vault: Vault, transcription_engine: (file: TFile) => Promise<string>) {
         this.settings = settings;
@@ -17,16 +18,22 @@ export class TranscriptionEngine {
         return this.transcription_engine(file);
     }
 
-    async getTranscriptionWhisperASR (file: TFile): Promise<string> {
+    async getTranscriptionWhisperLocal(file: TFile): Promise<string> {
+
+
+
+        return ""
+    }
+
+    async getTranscriptionWhisperASR(file: TFile): Promise<string> {
         // This next block is a workaround to current Obsidian API limitations: requestURL only supports string data or an unnamed blob, not key-value formdata
         // Essentially what we're doing here is constructing a multipart/form-data payload manually as a string and then passing it to requestURL
-        // I believe this to be equivilent to the following curl command: curl --location --request POST 'http://djmango-bruh:9000/asr?task=transcribe&language=en' --form 'audio_file=@"test-vault/02 Files/Recording.webm"'
+        // I believe this to be equivilent to the following curl command: curl --location --request POST 'http://localhost:9000/asr?task=transcribe&language=en' --form 'audio_file=@"test-vault/02 Files/Recording.webm"'
 
         // Generate the form data payload boundry string, it can be arbitrary, I'm just using a random string here
         // https://stackoverflow.com/questions/3508338/what-is-the-boundary-in-multipart-form-data
         // https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
-        const N = 16 // The length of our random boundry string
-        const randomBoundryString = "djmangoBoundry" + Array(N + 1).join((Math.random().toString(36) + '00000000000000000').slice(2, 18)).slice(0, N)
+        const randomBoundryString = "djmangoBoundry" + randomString(16); // Prefix + 16 char random boundry string
 
         // Construct the form data payload as a string
         const pre_string = `------${randomBoundryString}\r\nContent-Disposition: form-data; name="audio_file"; filename="blob"\r\nContent-Type: "application/octet-stream"\r\n\r\n`;
@@ -48,6 +55,7 @@ export class TranscriptionEngine {
             body: concatenated
         };
 
+        if (this.settings.debug) console.log("Transcribing with WhisperASR");
         return requestUrl(options).then(async (response) => {
             if (this.settings.debug) console.log(response);
             const transcription: string = response.json.text;

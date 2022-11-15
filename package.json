@@ -23,6 +23,7 @@
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^16.11.6",
+		"@types/which": "^2.0.1",
 		"@typescript-eslint/eslint-plugin": "5.29.0",
 		"@typescript-eslint/parser": "5.29.0",
 		"builtin-modules": "3.3.0",
@@ -32,6 +33,8 @@
 		"typescript": "4.7.4"
 	},
 	"dependencies": {
-		"obsidian-community-lib": "^2.0.2"
+		"@simplyhexagonal/exec": "^2.0.2",
+		"obsidian-community-lib": "^2.0.2",
+		"which": "^3.0.0"
 	}
 }

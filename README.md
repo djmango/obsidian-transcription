@@ -18,3 +18,8 @@ A plugin to generate super-fast high-quality transcriptions of audio and video f
 1. Install the plugin
 2. Set up [Whisper ASR](https://github.com/ahmetoner/whisper-asr-webservice) or [GambitEngine Scribe](https://gambitengine.com/) (coming soon)
 3. If not hosting locally, configure the URL of the transcription engine in the settings
+
+## Credits
+
+- [Obsidian Shell Commands](https://github.com/Taitava/obsidian-shellcommands) by Taitava, for utility functions and shell command execution
+- [Obsidian OCR](https://github.com/MohrJonas/obsidian-ocr/) by Jonas Mohr, for the idea of using shell commands to augment Obsidian's file functionality.
