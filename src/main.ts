@@ -1,3 +1,5 @@
+import { ChildProcess } from 'child_process';
+// import test from 'node:test';
 import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, requestUrl, RequestUrlParam, getBlobArrayBuffer, TFile, Notice } from 'obsidian';
 import { TranscriptionEngine } from 'src/transcribe';
 import { getAllLinesFromFile } from 'src/utils';
@@ -15,10 +17,14 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 }
 
 export default class Transcription extends Plugin {
+
 	settings: TranscriptionSettings;
+	public static plugin: Plugin;
+	public static children: Array<ChildProcess> = [];
 
 	async onload() {
 		await this.loadSettings();
+		Transcription.plugin = this;
 		if (this.settings.debug) console.log('Loading Obsidian Transcription');
 
 		this.addCommand({
@@ -62,31 +68,18 @@ export default class Transcription extends Plugin {
 					transcription_engine.getTranscription(fileToTranscribe).then(async (transcription) => {
 						if (this.settings.debug) console.log(transcription);
 
-						const markdownFileLines = getAllLinesFromFile(await this.app.vault.read(view.file));
-						const fileLinkString = `[[${fileToTranscribe.name}]]`; // This is the string that is used to link the audio file in the markdown file. There are potentially other ways to link the file, but this is the only one I know of 
+						var fileText = await this.app.vault.read(view.file)
+						const fileLinkString = this.app.metadataCache.fileToLinktext(fileToTranscribe, view.file.path); // This is the string that is used to link the audio file in the markdown file. If files are moved this potentially breaks, but Obsidian has built-in handlers for this, and handling that is outside the scope of this plugin
+						const fileLinkStringTagged = `[[${fileLinkString}]]`; // This is the string that is used to link the audio file in the markdown file.
+						console.log(fileLinkString)
 
-						// Iterate through the lines of the markdown file and find the line that contains the file link
-						let fileLinkLineIndex: number | undefined = undefined;
-						for (const line of markdownFileLines) {
-							if (line.includes(fileLinkString)) {
-								fileLinkLineIndex = markdownFileLines.indexOf(line);
-								break;
-							}
-						}
-
-						if (fileLinkLineIndex === undefined) {
-							if (this.settings.debug) {
-								console.log('Could not find transcription line for ' + fileToTranscribe.name + ' in ' + view.file.name);
-								new Notice('Could not find transcription line for ' + fileToTranscribe.name + ' in ' + view.file.name, 3000);
-							}
-							return;
-						}
-
-						// Now that we have the line index of the file link, we can insert the transcription line after it. Potential for custom format here
-						markdownFileLines[fileLinkLineIndex] = markdownFileLines[fileLinkLineIndex] + '\n' + transcription;
+						// Perform a string replacement, add the transcription to the next line after the file link
+						const startReplacementIndex = fileText.indexOf(fileLinkStringTagged) + fileLinkStringTagged.length;
+						// fileText = [fileText.slice(0, startReplacementIndex), `\n\`\`\`${transcription}\`\`\``, fileText.slice(startReplacementIndex)].join('');
+						fileText = [fileText.slice(0, startReplacementIndex), `\n${transcription}`, fileText.slice(startReplacementIndex)].join('');
 
 						// Now that we have the file lines with the transcription, we can write the file
-						await this.app.vault.modify(view.file, markdownFileLines.join('\n'));
+						await this.app.vault.modify(view.file, fileText); 
 
 					}).catch((error) => {
 						if (this.settings.debug) new Notice('Error transcribing file ' + fileToTranscribe.name + ': ' + error);
@@ -94,6 +87,13 @@ export default class Transcription extends Plugin {
 					});
 				}
 			}
+		});
+
+		// Kill child processes when the plugin is unloaded
+		this.app.workspace.on("quit", () => {
+			Transcription.children.forEach((child) => {
+				child.kill();
+			});
 		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin

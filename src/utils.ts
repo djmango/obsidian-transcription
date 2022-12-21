@@ -1,27 +1,12 @@
 /* Utility functions for Obsidian Transcript */
 import which from "which";
 import { App, FileSystemAdapter } from "obsidian";
-
-/**
- * Creates a new Uint8Array by concating provided ArrayBuffers
- * https://gist.github.com/72lions/4528834
- *
- * @private
- * @param {ArrayBuffer} bufs The first buffer.
- * @return {ArrayBuffer} The new ArrayBuffer created out of the two.
- */
-export function appendBuffer(buffer1: ArrayBuffer, buffer2: ArrayBuffer) {
-    const tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
-    tmp.set(new Uint8Array(buffer1), 0);
-    tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
-    return tmp.buffer;
-}
+import { existsSync } from "fs";
+import { platform } from "os";
 
 export const randomString = (length: number) => Array(length + 1).join((Math.random().toString(36) + '00000000000000000').slice(2, 18)).slice(0, length)
 export const getAllLinesFromFile = (cache: string) => cache.split(/\r?\n/)
 export const combineFileLines = (lines: string[]) => lines.join("\n")
-
-/* Utility functions from Obsidian Shellcommands https://github.com/Taitava/obsidian-shellcommands/ */
 
 export function getVaultAbsolutePath(app: App) {
     // Original code was copied 2021-08-22 from https://github.com/phibr0/obsidian-open-with/blob/84f0e25ba8e8355ff83b22f4050adde4cc6763ea/main.ts#L66-L67
@@ -56,7 +41,26 @@ export async function doesProgramExist(name: string): Promise<boolean> {
     }
 }
 
-export function clampFileName(maxLength: number, fileName: string): string {
-    if (fileName.length <= maxLength) return fileName;
-    return `${fileName.slice(undefined, maxLength - 3)}...`;
+export async function addAdditionalPaths() {
+    // Add additional paths to the PATH environment variable
+    switch (platform()) {
+		case "win32":
+			process.env.PATH = `${process.env.PATH}${SettingsManager.currentSettings.additionalSearchPath}${delimiter}`;
+			break;
+		case "darwin":
+		case "linux":
+			process.env.PATH = `${process.env.PATH}${delimiter}${SettingsManager.currentSettings.additionalSearchPath}`;
+			break;
+		default:
+			console.log(`Additional paths not implemented for platform ${platform()}. Doing nothing.`);
+		}
+		console.log(`Adding additional paths. $PATH is now ${process.env.PATH}`);
+}
+
+// TODO introduce checks for mobile
+export async function applyHomebrewWorkaround() {
+    if (existsSync("/opt/homebrew/bin")) {
+        process.env.PATH = `${process.env.PATH}:/opt/homebrew/bin`;
+        console.log(`Applied homebrew workaround: $PATH is now ${process.env.PATH}`);
+    }
 }

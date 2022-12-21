@@ -23,11 +23,6 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@simplyhexagonal/exec@^2.0.2":
-  version "2.0.2"
-  resolved "https://registry.npmjs.org/@simplyhexagonal/exec/-/exec-2.0.2.tgz"
-  integrity sha512-3RN7sCrn2wfA2K2kdlt2BNn9Ajb9ko9dkJXecQoJyDG732fcBnzNNpni6vHtMtROrAHuNpmMTQCSMt7eVGK+vw==
-
 "@types/codemirror@0.0.108":
   version "0.0.108"
   resolved "https://registry.npmjs.org/@types/codemirror/-/codemirror-0.0.108.tgz"
