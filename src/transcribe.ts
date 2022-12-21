@@ -1,7 +1,6 @@
-import Transcription, { TranscriptionSettings } from "src/main";
+import { TranscriptionSettings } from "src/main";
 import { getBlobArrayBuffer, requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
 import { randomString } from "src/utils";
-// import exec from "@simplyhexagonal/exec";
 
 // This class is the parent for transcription engines. It takes settings and a file as an input and returns a transcription as a string
 export class TranscriptionEngine {
@@ -22,21 +21,6 @@ export class TranscriptionEngine {
      */
     async getTranscription(file: TFile): Promise<string> {
         return this.transcription_engine(file);
-    }
-
-    async getTranscriptionWhisperLocal(file: TFile): Promise<string> {
-        // Run command to transcribe file
-        return ''
-        // const execReturn = exec(`mamba activate jarvis && whisper -h`);
-        // Transcription.children.push(execReturn.execProcess);
-
-        // // Get result and log it
-        // const result = await execReturn.execPromise;
-        // if (this.settings.debug) console.log(result);
-
-        // // Return error or result
-        // if (result.exitCode != 0) return result.stderrOutput;
-        // return result.stdoutOutput
     }
 
     async getTranscriptionWhisperASR(file: TFile): Promise<string> {

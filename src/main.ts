@@ -1,8 +1,6 @@
 import { ChildProcess } from 'child_process';
-// import test from 'node:test';
-import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, requestUrl, RequestUrlParam, getBlobArrayBuffer, TFile, Notice } from 'obsidian';
+import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TFile, Notice } from 'obsidian';
 import { TranscriptionEngine } from 'src/transcribe';
-import { getAllLinesFromFile } from 'src/utils';
 
 interface TranscriptionSettings {
 	transcribeFileExtensions: string;
