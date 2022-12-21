@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-transcription",
 	"name": "Transcription",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
 	"description": "Obsidian plugin to create high-quality transcriptions from markdown linked audio files",
 	"author": "djmango",
