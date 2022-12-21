@@ -56,8 +56,34 @@ export class TranscriptionEngine {
         if (this.settings.debug) console.log("Transcribing with WhisperASR");
         return requestUrl(options).then(async (response) => {
             if (this.settings.debug) console.log(response);
-            const transcription: string = response.json.text;
-            return transcription;
+
+            // WhisperASR returns a JSON object with a text field containing the transcription and segments field
+            if (this.settings.timestamps) {
+
+                var transcription: string = "";
+                const duration_seconds = Math.floor(response.json.segments[response.json.segments.length - 1].end);
+                var start_iso_slice = 14;
+                if (duration_seconds >= 3600) start_iso_slice = 11;
+                for (var s of response.json.segments) {
+                    if (typeof s.start === 'number' && typeof s.text === 'string') {
+                        // Convert the start and end times to ISO 8601 format and then substring to get the HH:MM:SS portion
+                        const start = new Date(Math.floor(s.start) * 1000).toISOString().substring(start_iso_slice, 19)
+                        const end = new Date(Math.floor(s.end) * 1000).toISOString().substring(start_iso_slice, 19)
+                        const timestamp = `\`[${start} - ${end}]\``
+                        // Add the timestamp and the text to the transcription
+                        transcription += timestamp + ': ' + s.text + "\n"
+                    }
+                    else {
+                        console.error("WhisperASR returned an invalid segment")
+                    }
+                }
+                return transcription;
+            }
+
+            else {
+                const transcription: string = response.json.text;
+                return transcription;
+            }
         }).catch((error) => {
             if (this.settings.debug) console.error(error);
             return Promise.reject(error);

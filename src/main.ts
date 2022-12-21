@@ -3,12 +3,14 @@ import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TFile, No
 import { TranscriptionEngine } from 'src/transcribe';
 
 interface TranscriptionSettings {
+	timestamps: boolean;
 	transcribeFileExtensions: string;
 	whisperASRUrl: string;
 	debug: boolean;
 }
 
 const DEFAULT_SETTINGS: TranscriptionSettings = {
+	timestamps: false,
 	transcribeFileExtensions: 'mp3,wav,webm',
 	whisperASRUrl: 'http://localhost:9000',
 	debug: false
@@ -125,6 +127,16 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		containerEl.createEl('h2', { text: 'Settings for Obsidian Transcription' });
+
+		new Setting(containerEl)
+			.setName('Enable timestamps')
+			.setDesc('Add timestamps to the beginning of each line')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.timestamps)
+				.onChange(async (value) => {
+					this.plugin.settings.timestamps = value;
+					await this.plugin.saveSettings();
+				}));
 
 		new Setting(containerEl)
 			.setName('Whisper ASR URL')
