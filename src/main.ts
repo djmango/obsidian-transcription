@@ -21,11 +21,13 @@ export default class Transcription extends Plugin {
 	settings: TranscriptionSettings;
 	public static plugin: Plugin;
 	public static children: Array<ChildProcess> = [];
+	public transcription_engine: TranscriptionEngine;
 
 	async onload() {
 		await this.loadSettings();
 		Transcription.plugin = this;
 		if (this.settings.debug) console.log('Loading Obsidian Transcription');
+		this.transcription_engine = new TranscriptionEngine(this.settings, this.app.vault, TranscriptionEngine.prototype.getTranscriptionWhisperASR)
 
 		this.addCommand({
 			id: 'obsidian-transcription-transcribe-all-in-view',
@@ -59,13 +61,12 @@ export default class Transcription extends Plugin {
 					}
 				}
 
+
 				// Now that we have all the files to transcribe, we can transcribe them
 				for (const fileToTranscribe of filesToTranscribe) {
 					if (this.settings.debug) console.log('Transcribing ' + fileToTranscribe.path);
 
-					const transcription_engine = new TranscriptionEngine(this.settings, this.app.vault, TranscriptionEngine.prototype.getTranscriptionWhisperASR)
-
-					transcription_engine.getTranscription(fileToTranscribe).then(async (transcription) => {
+					this.transcription_engine.getTranscription(fileToTranscribe).then(async (transcription) => {
 						if (this.settings.debug) console.log(transcription);
 
 						var fileText = await this.app.vault.read(view.file)
