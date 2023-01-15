@@ -21,5 +21,4 @@ A plugin to generate super-fast high-quality transcriptions of audio and video f
 
 ## Credits
 
-- [Obsidian Shell Commands](https://github.com/Taitava/obsidian-shellcommands) by Taitava, for utility functions and shell command execution
-- [Obsidian OCR](https://github.com/MohrJonas/obsidian-ocr/) by Jonas Mohr, for the idea of using shell commands to augment Obsidian's file functionality.
+- [Whisper ASR](https://github.com/ahmetoner/whisper-asr-webservice) by Ahmed, for the easy-to-use Whisper webservice backend
