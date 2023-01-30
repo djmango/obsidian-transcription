@@ -28,7 +28,7 @@ export class TranscriptionEngine {
      * @returns {Promise<string>} promise that resolves to a string containing the transcription 
      */
     async getTranscription(file: TFile): Promise<string> {
-        this.transcription_engine = this.transcription_engines[this.settings.transcription_engine]; 
+        this.transcription_engine = this.transcription_engines[this.settings.transcription_engine];
         return this.transcription_engine(file);
     }
 
@@ -100,9 +100,7 @@ export class TranscriptionEngine {
         const create_transcription_request: RequestUrlParam = {
             method: 'POST',
             url: url,
-            headers: {
-                'Authorization': `Bearer ${this.settings.scribeToken}`
-            },
+            headers: { 'Authorization': `Bearer ${this.settings.scribeToken}` }
         }
 
         if (this.settings.debug) console.log("Transcribing with Scribe");
@@ -135,14 +133,12 @@ export class TranscriptionEngine {
 
             // Convert it to an array buffer
             const [request_body, boundary_string] = await payloadGenerator(payload_data);
-            console.log(request_body);
 
             // Decode return data and inspect
-            if (this.settings.debug) {
-                const decoder = new TextDecoder();
-                console.log('Request body:')
-                console.log(decoder.decode(request_body));
-            }
+            // if (this.settings.debug) {
+            //     const decoder = new TextDecoder();
+            //     console.log(decoder.decode(request_body));
+            // }
 
             const upload_file_request: RequestUrlParam = {
                 method: 'POST',
@@ -153,11 +149,42 @@ export class TranscriptionEngine {
 
             // Upload the file to Scribe S3
             return requestUrl(upload_file_request).then(async (response) => {
-                if (this.settings.debug) console.log(response);
+                // if (this.settings.debug) console.log(response);
+                if (this.settings.debug) console.log('File uploaded to Scribe S3');
 
                 // Wait for Scribe to finish transcribing the file
-                return 'Transcription'
 
+                const get_transcription_request: RequestUrlParam = {
+                    method: 'GET',
+                    url: `${api_base}/v1/scribe/transcriptions/${create_transcription_response.transcription.transcription_id}`,
+                    headers: { 'Authorization': `Bearer ${this.settings.scribeToken}` }
+                }
+
+                if (this.settings.debug) console.log('Waiting for Scribe to finish transcribing...');
+
+                // Poll Scribe until the transcription is complete
+                let tries = 0;
+                while (true) {
+                    // Get the transcription status
+                    const get_transcription_response: paths['/v1/scribe/transcriptions/{transcription_id}']['get']['responses']['200']['content']['application/json'] = await requestUrl(get_transcription_request).json;
+                    if (this.settings.debug) console.log(get_transcription_response);
+
+                    // If the transcription is complete, return the transcription text
+                    if (get_transcription_response.status == 'complete' && get_transcription_response.transcription_text !== undefined) {
+                        if (this.settings.debug) console.log('Scribe finished transcribing');
+                        return get_transcription_response.transcription_text;
+                    }
+
+                    // If the transcription is still in progress, wait 3 seconds and try again
+                    else {
+                        tries += 1;
+                        if (tries > 60) {
+                            if (this.settings.debug) console.error('Scribe took too long to transcribe the file');
+                            return Promise.reject('Scribe took too long to transcribe the file');
+                        }
+                        await sleep(3000);
+                    }
+                }
             }).catch((error) => {
                 if (this.settings.debug) console.error(error);
                 return Promise.reject(error);
