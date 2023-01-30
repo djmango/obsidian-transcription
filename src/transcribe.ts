@@ -1,17 +1,25 @@
 import { TranscriptionSettings } from "src/main";
-import { getBlobArrayBuffer, requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
-import { randomString } from "src/utils";
+import { requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
+import { paths } from "./types/gambitengine";
+import { fileToRequestPayload, payloadGenerator, PayloadData } from "src/utils";
 
 // This class is the parent for transcription engines. It takes settings and a file as an input and returns a transcription as a string
+
+type TranscriptionBackend = (file: TFile) => Promise<string>;
+
 export class TranscriptionEngine {
     settings: TranscriptionSettings;
     vault: Vault;
-    transcription_engine: (file: TFile) => Promise<string>;
+    transcription_engine: TranscriptionBackend
 
-    constructor(settings: TranscriptionSettings, vault: Vault, transcription_engine: (file: TFile) => Promise<string>) {
+    transcription_engines: { [key: string]: TranscriptionBackend } = {
+        "scribe": this.getTranscriptionScribe,
+        "whisper_asr": this.getTranscriptionWhisperASR
+    }
+
+    constructor(settings: TranscriptionSettings, vault: Vault) {
         this.settings = settings;
         this.vault = vault;
-        this.transcription_engine = transcription_engine;
     }
 
     /**
@@ -20,38 +28,28 @@ export class TranscriptionEngine {
      * @returns {Promise<string>} promise that resolves to a string containing the transcription 
      */
     async getTranscription(file: TFile): Promise<string> {
+        this.transcription_engine = this.transcription_engines[this.settings.transcription_engine]; 
         return this.transcription_engine(file);
     }
 
     async getTranscriptionWhisperASR(file: TFile): Promise<string> {
-        // This next block is a workaround to current Obsidian API limitations: requestURL only supports string data or an unnamed blob, not key-value formdata
-        // Essentially what we're doing here is constructing a multipart/form-data payload manually as a string and then passing it to requestURL
-        // I believe this to be equivalent to the following curl command: curl --location --request POST 'http://localhost:9000/asr?task=transcribe&language=en' --form 'audio_file=@"test-vault/02 Files/Recording.webm"'
-
-        // Generate the form data payload Boundary string, it can be arbitrary, I'm just using a random string here
-        // https://stackoverflow.com/questions/3508338/what-is-the-boundary-in-multipart-form-data
-        // https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
-        const randomBoundaryString = "Boundary" + randomString(16); // Prefix + 16 char random Boundary string
-
-        // Construct the form data payload as a string
-        const pre_string = `------${randomBoundaryString}\r\nContent-Disposition: form-data; name="audio_file"; filename="blob"\r\nContent-Type: "application/octet-stream"\r\n\r\n`;
-        const post_string = `\r\n------${randomBoundaryString}--`
-
-        // Convert the form data payload to a blob by concatenating the pre_string, the file data, and the post_string, and then return the blob as an array buffer
-        const pre_string_encoded = new TextEncoder().encode(pre_string);
-        // const data = new Blob([await this.app.vault.adapter.readBinary(fileToTranscribe.path)]);
-        const data = new Blob([await this.vault.readBinary(file)]);
-        const post_string_encoded = new TextEncoder().encode(post_string);
-        const concatenated = await new Blob([pre_string_encoded, await getBlobArrayBuffer(data), post_string_encoded]).arrayBuffer()
-
         // Now that we have the form data payload as an array buffer, we can pass it to requestURL
         // We also need to set the content type to multipart/form-data and pass in the Boundary string
+
+        const [request_body, randomBoundaryString] = await fileToRequestPayload(file, this.vault);
+
         const options: RequestUrlParam = {
             method: 'POST',
             url: `${this.settings.whisperASRUrl}/asr?task=transcribe&language=en`,
             contentType: `multipart/form-data; boundary=----${randomBoundaryString}`,
-            body: concatenated
+            body: request_body
         };
+
+        // Decode and inspect the body
+        if (this.settings.debug) {
+            const decoder = new TextDecoder();
+            console.log(decoder.decode(request_body));
+        }
 
         if (this.settings.debug) console.log("Transcribing with WhisperASR");
         return requestUrl(options).then(async (response) => {
@@ -84,6 +82,88 @@ export class TranscriptionEngine {
                 const transcription: string = response.json.text;
                 return transcription;
             }
+        }).catch((error) => {
+            if (this.settings.debug) console.error(error);
+            return Promise.reject(error);
+        });
+    }
+
+    async getTranscriptionScribe(file: TFile): Promise<string> {
+
+        if (this.settings.debug) console.log("Transcribing with Scribe");
+
+        let api_base: string
+        if (this.settings.debug) api_base = 'https://dev.api.gambitengine.com'
+        else api_base = 'https://api.gambitengine.com'
+
+        let url = `${api_base}/v1/scribe/transcriptions`
+        const create_transcription_request: RequestUrlParam = {
+            method: 'POST',
+            url: url,
+            headers: {
+                'Authorization': `Bearer ${this.settings.scribeToken}`
+            },
+        }
+
+        if (this.settings.debug) console.log("Transcribing with Scribe");
+        // Create the transcription request, then upload the file to Scribe S3
+        return requestUrl(create_transcription_request).then(async (response) => {
+            if (this.settings.debug) console.log(response);
+            const create_transcription_response: paths['/v1/scribe/transcriptions']['post']['responses']['201']['content']['application/json'] = response.json;
+
+            if (this.settings.debug) console.log(create_transcription_response);
+            if (this.settings.debug) console.log('Uploading file to Scribe S3...');
+
+            if (create_transcription_response.upload_request === undefined || create_transcription_response.upload_request.url === undefined || create_transcription_response.upload_request.fields === undefined) {
+                if (this.settings.debug) console.error('Scribe returned an invalid upload request');
+                return Promise.reject('Scribe returned an invalid upload request');
+            }
+
+            // Create the form data payload
+            let payload_data: PayloadData = {}
+
+            for (const [key, value] of Object.entries(create_transcription_response.upload_request.fields)) {
+                if (typeof key === 'string' && typeof value === 'string') payload_data[key] = value;
+                else {
+                    if (this.settings.debug) console.error('Scribe returned an invalid upload request');
+                    return Promise.reject('Scribe returned an invalid upload request');
+                }
+            }
+
+            const data = new Blob([await this.vault.readBinary(file)]);
+            payload_data['file'] = data;
+
+            // Convert it to an array buffer
+            const [request_body, boundary_string] = await payloadGenerator(payload_data);
+            console.log(request_body);
+
+            // Decode return data and inspect
+            if (this.settings.debug) {
+                const decoder = new TextDecoder();
+                console.log('Request body:')
+                console.log(decoder.decode(request_body));
+            }
+
+            const upload_file_request: RequestUrlParam = {
+                method: 'POST',
+                url: create_transcription_response.upload_request.url,
+                contentType: `multipart/form-data; boundary=----${boundary_string}`,
+                body: request_body
+            }
+
+            // Upload the file to Scribe S3
+            return requestUrl(upload_file_request).then(async (response) => {
+                if (this.settings.debug) console.log(response);
+
+                // Wait for Scribe to finish transcribing the file
+                return 'Transcription'
+
+            }).catch((error) => {
+                if (this.settings.debug) console.error(error);
+                return Promise.reject(error);
+            });
+
+
         }).catch((error) => {
             if (this.settings.debug) console.error(error);
             return Promise.reject(error);

@@ -7,13 +7,17 @@ interface TranscriptionSettings {
 	transcribeFileExtensions: string;
 	whisperASRUrl: string;
 	debug: boolean;
+	scribeToken: string;
+	transcription_engine: string
 }
 
 const DEFAULT_SETTINGS: TranscriptionSettings = {
 	timestamps: false,
 	transcribeFileExtensions: 'mp3,wav,webm',
 	whisperASRUrl: 'http://localhost:9000',
-	debug: false
+	debug: false,
+	scribeToken: '',
+	transcription_engine: 'Scribe'
 }
 
 export default class Transcription extends Plugin {
@@ -27,7 +31,7 @@ export default class Transcription extends Plugin {
 		await this.loadSettings();
 		Transcription.plugin = this;
 		if (this.settings.debug) console.log('Loading Obsidian Transcription');
-		this.transcription_engine = new TranscriptionEngine(this.settings, this.app.vault, TranscriptionEngine.prototype.getTranscriptionWhisperASR)
+		this.transcription_engine = new TranscriptionEngine(this.settings, this.app.vault)
 
 		this.addCommand({
 			id: 'obsidian-transcription-transcribe-all-in-view',
@@ -40,6 +44,7 @@ export default class Transcription extends Plugin {
 
 				// Get all linked files in the markdown file
 				const filesLinked = Object.keys(this.app.metadataCache.resolvedLinks[markdownFilePath]);
+				console.log(this.app.metadataCache);
 
 				// Now that we have all the files linked in the markdown file, we need to filter them by the file extensions we want to transcribe
 				const filesToTranscribe: TFile[] = [];
@@ -80,7 +85,7 @@ export default class Transcription extends Plugin {
 						fileText = [fileText.slice(0, startReplacementIndex), `\n${transcription}`, fileText.slice(startReplacementIndex)].join('');
 
 						// Now that we have the file lines with the transcription, we can write the file
-						await this.app.vault.modify(view.file, fileText); 
+						await this.app.vault.modify(view.file, fileText);
 
 					}).catch((error) => {
 						if (this.settings.debug) new Notice('Error transcribing file ' + fileToTranscribe.name + ': ' + error);
@@ -130,6 +135,32 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		containerEl.createEl('h2', { text: 'Settings for Obsidian Transcription' });
 
 		new Setting(containerEl)
+			.setName('General Settings')
+			.setHeading()
+
+		new Setting(containerEl)
+			.setName('Transcription engine')
+			.setDesc('The transcription engine to use')
+			.setClass('transcription-engine-setting')
+			.addDropdown(dropdown => dropdown
+				.addOption('scribe', 'Scribe')
+				.addOption('whisper_asr', 'Whisper ASR')
+				.setValue(this.plugin.settings.transcription_engine)
+				.onChange(async (value) => {
+					this.plugin.settings.transcription_engine = value;
+					await this.plugin.saveSettings();
+					// Hide the settings for the other transcription engine
+					if (value == 'scribe') {
+						containerEl.findAll('.scribe-settings').forEach((element) => { element.style.display = 'block'; });
+						containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'none'; });
+					}
+					else if (value == 'whisper_asr') {
+						containerEl.findAll('.scribe-settings').forEach((element) => { element.style.display = 'none'; });
+						containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'block'; });
+					}
+				}));
+
+		new Setting(containerEl)
 			.setName('Enable timestamps')
 			.setDesc('Add timestamps to the beginning of each line')
 			.addToggle(toggle => toggle
@@ -139,9 +170,33 @@ class TranscriptionSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
+
+		new Setting(containerEl)
+			.setName('Scribe Settings')
+			.setClass('scribe-settings')
+			.setHeading()
+
+		new Setting(containerEl)
+			.setName('Scribe Token')
+			.setDesc('The token used to authenticate with the Scribe API. Get one at https://gambitengine.com/scribe')
+			.setClass('scribe-settings')
+			.addText(text => text
+				.setPlaceholder(DEFAULT_SETTINGS.scribeToken)
+				.setValue(this.plugin.settings.scribeToken)
+				.onChange(async (value) => {
+					this.plugin.settings.scribeToken = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Whisper ASR Settings')
+			.setClass('whisper-asr-settings')
+			.setHeading()
+
 		new Setting(containerEl)
 			.setName('Whisper ASR URL')
 			.setDesc('The URL of the Whisper ASR server: https://github.com/ahmetoner/whisper-asr-webservice')
+			.setClass('whisper-asr-settings')
 			.addText(text => text
 				.setPlaceholder(DEFAULT_SETTINGS.whisperASRUrl)
 				.setValue(this.plugin.settings.whisperASRUrl)
@@ -151,15 +206,8 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('Allowed file extensions')
-			.setDesc('Comma-separated list of file extensions to transcribe')
-			.addText(text => text
-				.setPlaceholder(DEFAULT_SETTINGS.transcribeFileExtensions)
-				.setValue(this.plugin.settings.transcribeFileExtensions)
-				.onChange(async (value) => {
-					this.plugin.settings.transcribeFileExtensions = value;
-					await this.plugin.saveSettings();
-				}));
+			.setName('Advanced Settings')
+			.setHeading()
 
 		new Setting(containerEl)
 			.setName('Debug mode')
@@ -170,6 +218,16 @@ class TranscriptionSettingTab extends PluginSettingTab {
 					this.plugin.settings.debug = value;
 					await this.plugin.saveSettings();
 				}));
+
+		// Initially hide the settings for the other transcription engine
+		if (this.plugin.settings.transcription_engine == 'scribe') {
+			containerEl.findAll('.scribe-settings').forEach((element) => { element.style.display = 'block'; });
+			containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'none'; });
+		}
+		else if (this.plugin.settings.transcription_engine == 'whisper_asr') {
+			containerEl.findAll('.scribe-settings').forEach((element) => { element.style.display = 'none'; });
+			containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'block'; });
+		}
 	}
 }
 
