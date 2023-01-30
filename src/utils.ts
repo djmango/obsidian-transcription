@@ -17,39 +17,13 @@ export function getVaultAbsolutePath(app: App) {
 
 type PayloadAndBoundary = [ArrayBuffer, string];
 
-export async function fileToRequestPayload(file: TFile, vault: Vault): Promise<PayloadAndBoundary> {
-    // This is a workaround to current Obsidian API limitations: requestURL only supports string data or an unnamed blob, not key-value formdata
-    // Essentially what we're doing here is constructing a multipart/form-data payload manually as a string and then passing it to requestURL
-    // I believe this to be equivalent to the following curl command: curl --location --request POST 'http://localhost:9000/asr?task=transcribe&language=en' --form 'audio_file=@"test-vault/02 Files/Recording.webm"'
-
-    // Generate the form data payload Boundary string, it can be arbitrary, I'm just using a random string here
-    // https://stackoverflow.com/questions/3508338/what-is-the-boundary-in-multipart-form-data
-    // https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
-    const randomBoundaryString = "Boundary" + randomString(16); // Prefix + 16 char random Boundary string
-
-    // Construct the form data payload as a string
-    const pre_string = `------${randomBoundaryString}\r\nContent-Disposition: form-data; name="audio_file"; filename="blob"\r\nContent-Type: "application/octet-stream"\r\n\r\n`;
-    const post_string = `\r\n------${randomBoundaryString}--`
-
-    // Convert the form data payload to a blob by concatenating the pre_string, the file data, and the post_string, and then return the blob as an array buffer
-    const pre_string_encoded = new TextEncoder().encode(pre_string);
-    const data = new Blob([await vault.readBinary(file)]);
-    console.log(data)
-    console.log(await getBlobArrayBuffer(data))
-    const post_string_encoded = new TextEncoder().encode(post_string);
-    const payload = await new Blob([pre_string_encoded, await getBlobArrayBuffer(data), post_string_encoded]).arrayBuffer()
-
-    return [payload, randomBoundaryString]
-}
 
 export type PayloadData = { [key: string]: string | Blob | ArrayBuffer }
 
 export async function payloadGenerator(payload_data: PayloadData): Promise<PayloadAndBoundary> {
+    // This function is a workaround to current Obsidian API limitations: requestURL only supports string data or an unnamed blob, not key-value formdata
+    // Essentially what we're doing here is constructing a multipart/form-data payload manually as a string and then passing it to requestURL
 
-    // this is a key value pair, keys are always strings, values can be strings or blobs
-
-    // This is a workaround to current Obsidian API limitations: requestURL only supports string data or an unnamed blob, not key-value formdata
-    // Note that this code assumes that value can be either a string or a Blob, and uses Response.arrayBuffer() to convert the Blob into an ArrayBuffer.
     const boundary_string = `Boundary${randomString(16)}`;
     const boundary = `------${boundary_string}`;
     // const chunks: Uint8Array | ArrayBuffer[] = [];

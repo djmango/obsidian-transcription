@@ -8,9 +8,8 @@ A plugin to generate super-fast high-quality transcriptions of audio and video f
 
 - Wide range of audio and video file formats supported via [ffmpeg](https://ffmpeg.org/)
 - Flexible transcription engines - local or cloud
+  - [GambitEngine Scribe](https://gambitengine.com/scribe)
   - [Whisper ASR](https://github.com/ahmetoner/whisper-asr-webservice)
-  - [Whisper via Huggingface](https://huggingface.co/openai/whisper-large) (coming soon)
-  - [GambitEngine Scribe](https://gambitengine.com/) (coming soon)
 - Customizable output format (coming soon)
 
 ## How to use
