@@ -4,7 +4,8 @@ import { TranscriptionEngine } from 'src/transcribe';
 
 interface TranscriptionSettings {
 	timestamps: boolean;
-	transcribeFileExtensions: string;
+	translate: boolean;
+	transcribeFileExtensions: string[];
 	whisperASRUrl: string;
 	debug: boolean;
 	scribeToken: string;
@@ -13,7 +14,8 @@ interface TranscriptionSettings {
 
 const DEFAULT_SETTINGS: TranscriptionSettings = {
 	timestamps: false,
-	transcribeFileExtensions: 'mp3,wav,webm',
+	translate: false,
+	transcribeFileExtensions: ['mp3', 'wav', 'webm', 'ogg', 'flac', 'm4a', 'aac', 'amr', 'opus', 'aiff', 'm3gp', 'mp4', 'm4v', 'mov', 'avi', 'wmv', 'flv', 'mpeg', 'mpg', 'mkv'],
 	whisperASRUrl: 'http://localhost:9000',
 	debug: false,
 	scribeToken: '',
@@ -50,7 +52,7 @@ export default class Transcription extends Plugin {
 				const filesToTranscribe: TFile[] = [];
 				for (const linkedFilePath of filesLinked) {
 					const linkedFileExtension = linkedFilePath.split('.').pop();
-					if (linkedFileExtension === undefined || !this.settings.transcribeFileExtensions.split(',').includes(linkedFileExtension)) {
+					if (linkedFileExtension === undefined || !this.settings.transcribeFileExtensions.includes(linkedFileExtension.toLowerCase())) {
 						if (this.settings.debug) console.log('Skipping ' + linkedFilePath + ' because the file extension is not in the list of transcribeable file extensions');
 						continue;
 					}
@@ -141,6 +143,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Transcription engine')
 			.setDesc('The transcription engine to use')
+			.setTooltip('Scribe is a cloud based transcription engine offered by GambitEngine (no set up, mobile friendly). Whisper ASR is a self-hosted local transcription engine that uses the Whisper ASR python app. (requires separate set up, not mobile friendly)')
 			.setClass('transcription-engine-setting')
 			.addDropdown(dropdown => dropdown
 				.addOption('scribe', 'Scribe')
@@ -170,11 +173,21 @@ class TranscriptionSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-
 		new Setting(containerEl)
 			.setName('Scribe Settings')
 			.setClass('scribe-settings')
 			.setHeading()
+
+		new Setting(containerEl)
+			.setName('Enable translation')
+			.setDesc('Translate the transcription from any language to English')
+			.setClass('scribe-settings')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.translate)
+				.onChange(async (value) => {
+					this.plugin.settings.translate = value;
+					await this.plugin.saveSettings();
+				}));
 
 		new Setting(containerEl)
 			.setName('Scribe Token')

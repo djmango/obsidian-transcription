@@ -93,7 +93,8 @@ export class TranscriptionEngine {
         const create_transcription_request: RequestUrlParam = {
             method: 'POST',
             url: `${api_base}/v1/scribe/transcriptions`,
-            headers: { 'Authorization': `Bearer ${this.settings.scribeToken}` }
+            headers: { 'Authorization': `Bearer ${this.settings.scribeToken}` },
+            body: JSON.stringify({ 'translate': this.settings.translate }),
         }
 
         if (this.settings.debug) console.log("Transcribing with Scribe");
@@ -133,6 +134,12 @@ export class TranscriptionEngine {
                 contentType: `multipart/form-data; boundary=----${boundary_string}`,
                 body: request_body
             }
+
+            // Decode upload file request and log it
+            // if (this.settings.debug) {
+            //     const decoder = new TextDecoder();
+            //     console.log(decoder.decode(request_body));
+            // }
 
             // Upload the file to Scribe S3
             return requestUrl(upload_file_request).then(async (response) => {
