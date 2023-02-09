@@ -8,14 +8,14 @@ A plugin to generate super-fast high-quality transcriptions of audio and video f
 
 - Wide range of audio and video file formats supported via [ffmpeg](https://ffmpeg.org/)
 - Flexible transcription engines - local or cloud
-  - [GambitEngine Scribe](https://gambitengine.com/scribe)
+  - [GambitEngine Scribe](https://scribe.gambitengine.com)
   - [Whisper ASR](https://github.com/ahmetoner/whisper-asr-webservice)
 - Customizable output format (coming soon)
 
 ## How to use
 
 1. Install the plugin
-2. Set up [Whisper ASR](https://github.com/ahmetoner/whisper-asr-webservice) or [GambitEngine Scribe](https://gambitengine.com/) (coming soon)
+2. Set up [Whisper ASR](https://github.com/ahmetoner/whisper-asr-webservice) or [GambitEngine Scribe](https://scribe.gambitengine.com/)
 3. If not hosting locally, configure the URL of the transcription engine in the settings
 
 ## Credits

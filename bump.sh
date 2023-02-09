@@ -39,6 +39,11 @@ echo "  \"$nextVersion\": \"$minObsidianVersion\"" >> temp
 echo "}" >> temp
 mv temp versions.json
 
+# If the branch is master remove main.js
+if [[ $(git branch --show-current) == "master" ]]; then
+	rm main.js
+fi
+
 # push the manifest and versions JSONs
 git add -A
 git commit -m "version bump to $nextVersion"
