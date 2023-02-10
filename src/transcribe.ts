@@ -1,5 +1,5 @@
 import { TranscriptionSettings } from "src/main";
-import { requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
+import { Notice, requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
 import { paths, components } from "./types/gambitengine";
 import { payloadGenerator, PayloadData } from "src/utils";
 
@@ -109,6 +109,7 @@ export class TranscriptionEngine {
 
         if (this.settings.debug) console.log(create_transcription_response);
         if (this.settings.debug) console.log('Uploading file to Scribe S3...');
+        if (this.settings.verbosity >= 2) new Notice('Uploading file to Scribe S3...', 1000);
 
         if (create_transcription_response.upload_request === undefined || create_transcription_response.upload_request.url === undefined || create_transcription_response.upload_request.fields === undefined) {
             if (this.settings.debug) console.error('Scribe returned an invalid upload request');
@@ -141,10 +142,9 @@ export class TranscriptionEngine {
         }
 
         // Upload the file to Scribe S3
-        // const upload_file_response = await requestUrl(upload_file_request);
         await requestUrl(upload_file_request);
         if (this.settings.debug) console.log('File uploaded to Scribe S3');
-        // if (this.settings.debug) console.log(upload_file_response);
+        if (this.settings.verbosity >= 1) new Notice('File uploaded to Scribe S3', 1000);
 
         // Wait for Scribe to finish transcribing the file
 

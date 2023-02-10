@@ -5,6 +5,7 @@ import { TranscriptionEngine } from 'src/transcribe';
 interface TranscriptionSettings {
 	timestamps: boolean;
 	translate: boolean;
+	verbosity: number;
 	transcribeFileExtensions: string[];
 	whisperASRUrl: string;
 	debug: boolean;
@@ -15,6 +16,7 @@ interface TranscriptionSettings {
 const DEFAULT_SETTINGS: TranscriptionSettings = {
 	timestamps: false,
 	translate: false,
+	verbosity: 1,
 	transcribeFileExtensions: ['mp3', 'wav', 'webm', 'ogg', 'flac', 'm4a', 'aac', 'amr', 'opus', 'aiff', 'm3gp', 'mp4', 'm4v', 'mov', 'avi', 'wmv', 'flv', 'mpeg', 'mpg', 'mkv'],
 	whisperASRUrl: 'http://localhost:9000',
 	debug: false,
@@ -162,6 +164,21 @@ class TranscriptionSettingTab extends PluginSettingTab {
 						containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'block'; });
 					}
 				}));
+
+		new Setting(containerEl)
+			.setName('Notice verbosity')
+			.setDesc('How granularly notices should be displayed')
+			.setTooltip('Verbose will display a notice for every event in the backend. Normal will display a notice for every major event, such as successful transcription or file upload. Silent will not display any notices.')
+			.addDropdown(dropdown => dropdown
+				.addOption('0', 'Silent')
+				.addOption('1', 'Normal')
+				.addOption('2', 'Verbose')
+				.setValue(this.plugin.settings.verbosity.toString())
+				.onChange(async (value) => {
+					this.plugin.settings.verbosity = parseInt(value);
+					await this.plugin.saveSettings();
+				}));
+
 
 		new Setting(containerEl)
 			.setName('Enable timestamps')
