@@ -32,7 +32,7 @@ export default class Transcription extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		Transcription.plugin = this;
-		if (this.settings.debug) console.log('Loading Obsidian Transcription');
+		console.log('Loading Obsidian Transcription');
 		this.transcription_engine = new TranscriptionEngine(this.settings, this.app.vault)
 
 		this.addCommand({
@@ -191,7 +191,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Scribe Token')
-			.setDesc('The token used to authenticate with the Scribe API. Get one at https://gambitengine.com/scribe')
+			.setDesc('The token used to authenticate with the Scribe API. Get one at https://scribe.gambitengine.com')
 			.setClass('scribe-settings')
 			.addText(text => text
 				.setPlaceholder(DEFAULT_SETTINGS.scribeToken)
