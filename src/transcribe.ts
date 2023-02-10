@@ -23,11 +23,11 @@ export class TranscriptionEngine {
     }
 
     segmentsToTimestampedString(segments: components['schemas']['TranscriptionResultSegment'][]): string {
-        var transcription: string = "";
+        let transcription = "";
         const duration_seconds = Math.floor(segments[segments.length - 1].end);
-        var start_iso_slice = 14;
+        let start_iso_slice = 14;
         if (duration_seconds >= 3600) start_iso_slice = 11;
-        for (var s of segments) {
+        for (const s of segments) {
             if (typeof s.start === 'number' && typeof s.text === 'string') {
                 // Convert the start and end times to ISO 8601 format and then substring to get the HH:MM:SS portion
                 const start = new Date(Math.floor(s.start) * 1000).toISOString().substring(start_iso_slice, 19)
@@ -50,16 +50,19 @@ export class TranscriptionEngine {
      */
     async getTranscription(file: TFile): Promise<string> {
         if (this.settings.debug) console.log(`Transcription engine: ${this.settings.transcription_engine}`);
+        const start = new Date();
         this.transcription_engine = this.transcription_engines[this.settings.transcription_engine];
-        return this.transcription_engine(file);
+        const result = this.transcription_engine(file);
+        if (this.settings.debug) console.log(`Transcription took ${new Date().getTime() - start.getTime()}ms`);
+        return result
     }
 
     async getTranscriptionWhisperASR(file: TFile): Promise<string> {
         // Now that we have the form data payload as an array buffer, we can pass it to requestURL
         // We also need to set the content type to multipart/form-data and pass in the Boundary string
 
-        let payload_data: PayloadData = {}
-        payload_data['audio_file'] = new Blob([await this.vault.readBinary(file)]);;
+        const payload_data: PayloadData = {}
+        payload_data['audio_file'] = new Blob([await this.vault.readBinary(file)]);
         const [request_body, boundary_string] = await payloadGenerator(payload_data);
 
         const options: RequestUrlParam = {
@@ -111,7 +114,7 @@ export class TranscriptionEngine {
             }
 
             // Create the form data payload
-            let payload_data: PayloadData = {}
+            const payload_data: PayloadData = {}
 
             // Add the upload request data for the S3 presigned URL from Scribe
             for (const [key, value] of Object.entries(create_transcription_response.upload_request.fields)) {
@@ -123,7 +126,7 @@ export class TranscriptionEngine {
             }
 
             // Add the media file
-            payload_data['file'] = new Blob([await this.vault.readBinary(file)]);;
+            payload_data['file'] = new Blob([await this.vault.readBinary(file)]);
 
             // Convert the request to an array buffer
             const [request_body, boundary_string] = await payloadGenerator(payload_data);
@@ -157,6 +160,7 @@ export class TranscriptionEngine {
 
                 // Poll Scribe until the transcription is complete
                 let tries = 0;
+                // eslint-disable-next-line no-constant-condition
                 while (true) {
                     // Get the transcription status
                     const get_transcription_response: paths['/v1/scribe/transcriptions/{transcription_id}']['get']['responses']['200']['content']['application/json'] = await requestUrl(get_transcription_request).json;

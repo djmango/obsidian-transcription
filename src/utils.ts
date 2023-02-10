@@ -1,5 +1,5 @@
 /* Utility functions for Obsidian Transcript */
-import { App, FileSystemAdapter, TFile, Vault, getBlobArrayBuffer } from "obsidian";
+import { App, FileSystemAdapter, getBlobArrayBuffer } from "obsidian";
 
 export const randomString = (length: number) => Array(length + 1).join((Math.random().toString(36) + '00000000000000000').slice(2, 18)).slice(0, length)
 export const getAllLinesFromFile = (cache: string) => cache.split(/\r?\n/)
@@ -26,9 +26,9 @@ export async function payloadGenerator(payload_data: PayloadData): Promise<Paylo
 
     const boundary_string = `Boundary${randomString(16)}`;
     const boundary = `------${boundary_string}`;
-    // const chunks: Uint8Array | ArrayBuffer[] = [];
-    const chunks: any[] = [];
-    // await payload_data.forEach(async (value, key) => {
+    const chunks: Uint8Array | ArrayBuffer[] = [];
+    // const chunks: any[] = [];
+    // NOTE Could this cause corrupt files via synchronous operations?
     for (const [key, value] of Object.entries(payload_data)) {
         // Start of a new part
         chunks.push(new TextEncoder().encode(`${boundary}\r\n`));

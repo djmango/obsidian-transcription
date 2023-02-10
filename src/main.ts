@@ -76,7 +76,7 @@ export default class Transcription extends Plugin {
 					this.transcription_engine.getTranscription(fileToTranscribe).then(async (transcription) => {
 						if (this.settings.debug) console.log(transcription);
 
-						var fileText = await this.app.vault.read(view.file)
+						let fileText = await this.app.vault.read(view.file)
 						const fileLinkString = this.app.metadataCache.fileToLinktext(fileToTranscribe, view.file.path); // This is the string that is used to link the audio file in the markdown file. If files are moved this potentially breaks, but Obsidian has built-in handlers for this, and handling that is outside the scope of this plugin
 						const fileLinkStringTagged = `[[${fileLinkString}]]`; // This is the string that is used to link the audio file in the markdown file.
 						console.log(fileLinkString)
