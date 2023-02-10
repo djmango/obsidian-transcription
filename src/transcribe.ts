@@ -52,9 +52,11 @@ export class TranscriptionEngine {
         if (this.settings.debug) console.log(`Transcription engine: ${this.settings.transcription_engine}`);
         const start = new Date();
         this.transcription_engine = this.transcription_engines[this.settings.transcription_engine];
-        const result = this.transcription_engine(file);
-        if (this.settings.debug) console.log(`Transcription took ${new Date().getTime() - start.getTime()}ms`);
-        return result
+        return this.transcription_engine(file).then((transcription) => {
+            if (this.settings.debug) console.log(`Transcription: ${transcription}`);
+            if (this.settings.debug) console.log(`Transcription took ${new Date().getTime() - start.getTime()} ms`);
+            return transcription;
+        })
     }
 
     async getTranscriptionWhisperASR(file: TFile): Promise<string> {
@@ -99,109 +101,95 @@ export class TranscriptionEngine {
             headers: { 'Authorization': `Bearer ${this.settings.scribeToken}` },
             body: JSON.stringify({ 'translate': this.settings.translate }),
         }
+        console.log(this.settings.translate);
 
         if (this.settings.debug) console.log("Transcribing with Scribe");
         // Create the transcription request, then upload the file to Scribe S3
-        return requestUrl(create_transcription_request).then(async (response) => {
-            const create_transcription_response: paths['/v1/scribe/transcriptions']['post']['responses']['201']['content']['application/json'] = response.json;
+        const create_transcription_response: paths['/v1/scribe/transcriptions']['post']['responses']['201']['content']['application/json'] = await requestUrl(create_transcription_request).json
 
-            if (this.settings.debug) console.log(create_transcription_response);
-            if (this.settings.debug) console.log('Uploading file to Scribe S3...');
+        if (this.settings.debug) console.log(create_transcription_response);
+        if (this.settings.debug) console.log('Uploading file to Scribe S3...');
 
-            if (create_transcription_response.upload_request === undefined || create_transcription_response.upload_request.url === undefined || create_transcription_response.upload_request.fields === undefined) {
+        if (create_transcription_response.upload_request === undefined || create_transcription_response.upload_request.url === undefined || create_transcription_response.upload_request.fields === undefined) {
+            if (this.settings.debug) console.error('Scribe returned an invalid upload request');
+            return Promise.reject('Scribe returned an invalid upload request');
+        }
+
+        // Create the form data payload
+        const payload_data: PayloadData = {}
+
+        // Add the upload request data for the S3 presigned URL from Scribe
+        for (const [key, value] of Object.entries(create_transcription_response.upload_request.fields)) {
+            if (typeof key === 'string' && typeof value === 'string') payload_data[key] = value;
+            else {
                 if (this.settings.debug) console.error('Scribe returned an invalid upload request');
                 return Promise.reject('Scribe returned an invalid upload request');
             }
+        }
 
-            // Create the form data payload
-            const payload_data: PayloadData = {}
+        // Add the media file
+        payload_data['file'] = new Blob([await this.vault.readBinary(file)]);
 
-            // Add the upload request data for the S3 presigned URL from Scribe
-            for (const [key, value] of Object.entries(create_transcription_response.upload_request.fields)) {
-                if (typeof key === 'string' && typeof value === 'string') payload_data[key] = value;
-                else {
-                    if (this.settings.debug) console.error('Scribe returned an invalid upload request');
-                    return Promise.reject('Scribe returned an invalid upload request');
-                }
+        // Convert the request to an array buffer
+        const [request_body, boundary_string] = await payloadGenerator(payload_data);
+
+        const upload_file_request: RequestUrlParam = {
+            method: 'POST',
+            url: create_transcription_response.upload_request.url,
+            contentType: `multipart/form-data; boundary=----${boundary_string}`,
+            body: request_body
+        }
+
+        // Upload the file to Scribe S3
+        // const upload_file_response = await requestUrl(upload_file_request);
+        await requestUrl(upload_file_request);
+        if (this.settings.debug) console.log('File uploaded to Scribe S3');
+        // if (this.settings.debug) console.log(upload_file_response);
+
+        // Wait for Scribe to finish transcribing the file
+
+        const get_transcription_request: RequestUrlParam = {
+            method: 'GET',
+            url: `${api_base}/v1/scribe/transcriptions/${create_transcription_response.transcription.transcription_id}`,
+            headers: { 'Authorization': `Bearer ${this.settings.scribeToken}` }
+        }
+
+        if (this.settings.debug) console.log('Waiting for Scribe to finish transcribing...');
+
+        // Poll Scribe until the transcription is complete
+        let tries = 0;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            // Get the transcription status
+            const get_transcription_response: paths['/v1/scribe/transcriptions/{transcription_id}']['get']['responses']['200']['content']['application/json'] = await requestUrl(get_transcription_request).json;
+            if (this.settings.debug) console.log(get_transcription_response);
+
+            // If the transcription is complete, return the transcription text
+            if (get_transcription_response.status == 'complete' &&
+                get_transcription_response.transcription_text !== undefined &&
+                get_transcription_response.transcription_result !== undefined) {
+                // Idk how asserts work in JS, but this should be an assert
+                if (this.settings.debug) console.log('Scribe finished transcribing');
+                if (this.settings.timestamps) return this.segmentsToTimestampedString(get_transcription_response.transcription_result);
+                else return get_transcription_response.transcription_text;
             }
-
-            // Add the media file
-            payload_data['file'] = new Blob([await this.vault.readBinary(file)]);
-
-            // Convert the request to an array buffer
-            const [request_body, boundary_string] = await payloadGenerator(payload_data);
-
-            const upload_file_request: RequestUrlParam = {
-                method: 'POST',
-                url: create_transcription_response.upload_request.url,
-                contentType: `multipart/form-data; boundary=----${boundary_string}`,
-                body: request_body
+            else if (tries > 60) {
+                if (this.settings.debug) console.error('Scribe took too long to transcribe the file');
+                return Promise.reject('Scribe took too long to transcribe the file');
             }
-
-            // Decode upload file request and log it
-            // if (this.settings.debug) {
-            //     const decoder = new TextDecoder();
-            //     console.log(decoder.decode(request_body));
-            // }
-
-            // Upload the file to Scribe S3
-            return requestUrl(upload_file_request).then(async (response) => {
-                if (this.settings.debug) console.log('File uploaded to Scribe S3');
-
-                // Wait for Scribe to finish transcribing the file
-
-                const get_transcription_request: RequestUrlParam = {
-                    method: 'GET',
-                    url: `${api_base}/v1/scribe/transcriptions/${create_transcription_response.transcription.transcription_id}`,
-                    headers: { 'Authorization': `Bearer ${this.settings.scribeToken}` }
-                }
-
-                if (this.settings.debug) console.log('Waiting for Scribe to finish transcribing...');
-
-                // Poll Scribe until the transcription is complete
-                let tries = 0;
-                // eslint-disable-next-line no-constant-condition
-                while (true) {
-                    // Get the transcription status
-                    const get_transcription_response: paths['/v1/scribe/transcriptions/{transcription_id}']['get']['responses']['200']['content']['application/json'] = await requestUrl(get_transcription_request).json;
-                    if (this.settings.debug) console.log(get_transcription_response);
-
-                    // If the transcription is complete, return the transcription text
-                    if (get_transcription_response.status == 'complete' &&
-                        get_transcription_response.transcription_text !== undefined &&
-                        get_transcription_response.transcription_result !== undefined) {
-                        // Idk how asserts work in JS, but this should be an assert
-                        if (this.settings.debug) console.log('Scribe finished transcribing');
-                        if (this.settings.timestamps) return this.segmentsToTimestampedString(get_transcription_response.transcription_result);
-                        else return get_transcription_response.transcription_text;
-                    }
-                    else if (tries > 60) {
-                        if (this.settings.debug) console.error('Scribe took too long to transcribe the file');
-                        return Promise.reject('Scribe took too long to transcribe the file');
-                    }
-                    else if (get_transcription_response.status == 'failed') {
-                        if (this.settings.debug) console.error('Scribe failed to transcribe the file');
-                        return Promise.reject('Scribe failed to transcribe the file');
-                    }
-                    else if (get_transcription_response.status == 'validation_failed') {
-                        if (this.settings.debug) console.error('Scribe has detected an invalid file');
-                        return Promise.reject('Scribe has detected an invalid file');
-                    }
-                    // If the transcription is still in progress, wait 3 seconds and try again
-                    else {
-                        tries += 1;
-                        await sleep(3000);
-                    }
-                }
-            }).catch((error) => {
-                if (this.settings.debug) console.error(error);
-                return Promise.reject(error);
-            });
-
-
-        }).catch((error) => {
-            if (this.settings.debug) console.error(error);
-            return Promise.reject(error);
-        });
+            else if (get_transcription_response.status == 'failed') {
+                if (this.settings.debug) console.error('Scribe failed to transcribe the file');
+                return Promise.reject('Scribe failed to transcribe the file');
+            }
+            else if (get_transcription_response.status == 'validation_failed') {
+                if (this.settings.debug) console.error('Scribe has detected an invalid file');
+                return Promise.reject('Scribe has detected an invalid file');
+            }
+            // If the transcription is still in progress, wait 3 seconds and try again
+            else {
+                tries += 1;
+                await sleep(3000);
+            }
+        }
     }
 }

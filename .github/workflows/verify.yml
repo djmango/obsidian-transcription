@@ -25,7 +25,7 @@ jobs:
       - name: Archive verified build
         uses: actions/upload-artifact@v3
         with:
-          name: dist-verified
+          name: obsidian-transcription
           path: |
             main.js
             manifest.json
