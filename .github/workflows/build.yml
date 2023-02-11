@@ -1,5 +1,5 @@
+name: Build Obsidian Transcription Dev
 # Thanks @ClareMacrae!
-name: Verify Commit & Build Distribution
 
 on:
   push:
