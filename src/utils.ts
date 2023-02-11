@@ -27,8 +27,7 @@ export async function payloadGenerator(payload_data: PayloadData): Promise<Paylo
     const boundary_string = `Boundary${randomString(16)}`;
     const boundary = `------${boundary_string}`;
     const chunks: Uint8Array | ArrayBuffer[] = [];
-    // const chunks: any[] = [];
-    // NOTE Could this cause corrupt files via synchronous operations?
+    // NOTE Could this cause corrupt files via synchronous operations? So far no issues, but it's worth keeping an eye on
     for (const [key, value] of Object.entries(payload_data)) {
         // Start of a new part
         chunks.push(new TextEncoder().encode(`${boundary}\r\n`));
