@@ -10,7 +10,7 @@ env:
   PLUGIN_NAME: obsidian-transcription
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
 
     steps:

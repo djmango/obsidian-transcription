@@ -6,7 +6,6 @@ interface TranscriptionSettings {
 	timestamps: boolean;
 	translate: boolean;
 	verbosity: number;
-	transcribeFileExtensions: string[];
 	whisperASRUrl: string;
 	debug: boolean;
 	scribeToken: string;
@@ -17,7 +16,6 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 	timestamps: false,
 	translate: false,
 	verbosity: 1,
-	transcribeFileExtensions: ['mp3', 'wav', 'webm', 'ogg', 'flac', 'm4a', 'aac', 'amr', 'opus', 'aiff', 'm3gp', 'mp4', 'm4v', 'mov', 'avi', 'wmv', 'flv', 'mpeg', 'mpg', 'mkv'],
 	whisperASRUrl: 'http://localhost:9000',
 	debug: false,
 	scribeToken: '',
@@ -29,8 +27,8 @@ export default class Transcription extends Plugin {
 	settings: TranscriptionSettings;
 	public static plugin: Plugin;
 	public static children: Array<ChildProcess> = [];
+	private static transcribeFileExtensions: string[] = ['mp3', 'wav', 'webm', 'ogg', 'flac', 'm4a', 'aac', 'amr', 'opus', 'aiff', 'm3gp', 'mp4', 'm4v', 'mov', 'avi', 'wmv', 'flv', 'mpeg', 'mpg', 'mkv']
 	public transcription_engine: TranscriptionEngine;
-
 	async onload() {
 		await this.loadSettings();
 		Transcription.plugin = this;
@@ -54,7 +52,7 @@ export default class Transcription extends Plugin {
 				const filesToTranscribe: TFile[] = [];
 				for (const linkedFilePath of filesLinked) {
 					const linkedFileExtension = linkedFilePath.split('.').pop();
-					if (linkedFileExtension === undefined || !this.settings.transcribeFileExtensions.includes(linkedFileExtension.toLowerCase())) {
+					if (linkedFileExtension === undefined || !Transcription.transcribeFileExtensions.includes(linkedFileExtension.toLowerCase())) {
 						if (this.settings.debug) console.log('Skipping ' + linkedFilePath + ' because the file extension is not in the list of transcribeable file extensions');
 						continue;
 					}
