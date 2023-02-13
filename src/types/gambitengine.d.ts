@@ -9,72 +9,74 @@ export interface paths {
     /** Hello */
     get: operations["hello_hello__get"];
   };
-  "/v1/sbm/inference/prompt_to_frames": {
+  "/v1/users/": {
     /**
-     * Prompt To Frames 
-     * @deprecated 
-     * @description This endpoint will take a prompt and return a list of frames, each frame being a string. The frames will be generated using the OpenAI API.
+     * Get Users 
+     * @description This endpoint will return all users.
      */
-    post: operations["prompt_to_frames_v1_sbm_inference_prompt_to_frames_post"];
-  };
-  "/v1/sbm/inference/frames_to_images": {
+    get: operations["get_users_v1_users__get"];
     /**
-     * Frames To Images 
-     * @deprecated 
-     * @description This method will take a list of frame prompts, stylize them, and return a list of frame images
+     * Create User 
+     * @description This endpoint will take a user and create a new user.
      */
-    post: operations["frames_to_images_v1_sbm_inference_frames_to_images_post"];
+    post: operations["create_user_v1_users__post"];
   };
-  "/v1/sbm/inference/prompt_to_images": {
+  "/v1/users/{user_id}": {
     /**
-     * Prompt To Images 
-     * @deprecated 
-     * @description This method will take a story prompt and return a list of frame images as well as the story itself
+     * Get User 
+     * @description This endpoint will take a user id and return the user.
      */
-    post: operations["prompt_to_images_v1_sbm_inference_prompt_to_images_post"];
+    get: operations["get_user_v1_users__user_id__get"];
   };
-  "/v1/sbm/storyboard/": {
+  "/v1/sbm/storyboards/": {
     /**
      * Get Storyboards 
      * @description This endpoint will return a list of all storyboards.
      */
-    get: operations["get_storyboards_v1_sbm_storyboard__get"];
+    get: operations["get_storyboards_v1_sbm_storyboards__get"];
     /**
      * Create Storyboard 
      * @description This endpoint will take a story prompt and return a list of frames, each frame being a string frame description and an image URL.
      */
-    post: operations["create_storyboard_v1_sbm_storyboard__post"];
+    post: operations["create_storyboard_v1_sbm_storyboards__post"];
   };
-  "/v1/sbm/storyboard/{storyboard_id}": {
+  "/v1/sbm/storyboards/{storyboard_id}": {
     /**
      * Get Storyboard 
      * @description This endpoint will take a storyboard id and return the entire storyboard object, with frames and styles and revisions.
      */
-    get: operations["get_storyboard_v1_sbm_storyboard__storyboard_id__get"];
+    get: operations["get_storyboard_v1_sbm_storyboards__storyboard_id__get"];
     /**
      * Update Storyboard 
      * @description This endpoint will take a storyboard id and style id, and return the entire storyboard object, with frames and styles and revisions.
      */
-    post: operations["update_storyboard_v1_sbm_storyboard__storyboard_id__post"];
+    post: operations["update_storyboard_v1_sbm_storyboards__storyboard_id__post"];
     /**
      * Delete Storyboard 
      * @description This endpoint will take a storyboard id and delete the entire storyboard object, with frames and styles and revisions.
      */
-    delete: operations["delete_storyboard_v1_sbm_storyboard__storyboard_id__delete"];
+    delete: operations["delete_storyboard_v1_sbm_storyboards__storyboard_id__delete"];
   };
-  "/v1/sbm/storyboard/{storyboard_id}/frames": {
+  "/v1/sbm/storyboards/{storyboard_id}/published": {
+    /**
+     * Get Storyboard Published 
+     * @description This endpoint will take a storyboard id and return the entire storyboard object, with frames and styles and revisions. Essentially, published frames is the default frames of the published style.
+     */
+    get: operations["get_storyboard_published_v1_sbm_storyboards__storyboard_id__published_get"];
+  };
+  "/v1/sbm/storyboards/{storyboard_id}/frames": {
     /**
      * Get Storyboard Frames 
-     * @description This endpoint will take a storyboard id optionally a style_id and return the frames associated in a 3D matrix [frame_index][style_revision][frame_revision].
+     * @description This endpoint will take a storyboard id and return all frames in the storyboard.
      */
-    get: operations["get_storyboard_frames_v1_sbm_storyboard__storyboard_id__frames_get"];
+    get: operations["get_storyboard_frames_v1_sbm_storyboards__storyboard_id__frames_get"];
   };
-  "/v1/sbm/storyboard/{storyboard_id}/frames/{frame_index}": {
+  "/v1/sbm/storyboards/{storyboard_id}/frames/{frame_index}": {
     /**
      * Get Storyboard Frame Index 
-     * @description This endpoint will take a storyboard id, frame index, and optionally a style_id and return the frames associated in a 2D matrix [frame_index][style_revision][frame_revision].
+     * @description This endpoint will take a storyboard id and a frame index and return all frames in the storyboard with that index. For example, if the storyboard has 5 frames, and the frame index is 2, this endpoint will return the 3rd frame.
      */
-    get: operations["get_storyboard_frame_index_v1_sbm_storyboard__storyboard_id__frames__frame_index__get"];
+    get: operations["get_storyboard_frame_index_v1_sbm_storyboards__storyboard_id__frames__frame_index__get"];
   };
   "/v1/sbm/frames/{frame_id}": {
     /**
@@ -83,10 +85,15 @@ export interface paths {
      */
     get: operations["get_frame_v1_sbm_frames__frame_id__get"];
     /**
-     * Revise Frame 
+     * Update Frame 
      * @description This endpoint will take a storyboard id and frame index, and return the revised frame.
      */
-    post: operations["revise_frame_v1_sbm_frames__frame_id__post"];
+    post: operations["update_frame_v1_sbm_frames__frame_id__post"];
+    /**
+     * Delete Frame 
+     * @description This endpoint will take a frame id and delete the frame.
+     */
+    delete: operations["delete_frame_v1_sbm_frames__frame_id__delete"];
   };
   "/v1/sbm/styles/": {
     /**
@@ -113,6 +120,11 @@ export interface paths {
     delete: operations["delete_style_v1_sbm_styles__style_id__delete"];
   };
   "/v1/scribe/transcriptions": {
+    /**
+     * Get Transcriptions 
+     * @description Get all the transcription jobs for the user
+     */
+    get: operations["get_transcriptions_v1_scribe_transcriptions_get"];
     /**
      * Create Transcription 
      * @description This method will create a transcription job from a file URL or return a presigned URL to upload an audio file to
@@ -170,6 +182,12 @@ export interface components {
        * @example https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4
        */
       url?: string;
+      /**
+       * Translate 
+       * @description Whether or not to translate the transcription 
+       * @default true
+       */
+      translate?: boolean;
     };
     /** CreateTranscriptionResponse */
     CreateTranscriptionResponse: {
@@ -178,12 +196,6 @@ export interface components {
        * @description The request details to upload the audio file
        */
       upload_request?: Record<string, never>;
-      /**
-       * Transcription Url 
-       * Format: uri 
-       * @description The url to request the transcription job status and results
-       */
-      transcription_url: string;
       /**
        * Transcription 
        * @description The transcription job
@@ -237,48 +249,12 @@ export interface components {
       frame_revision?: number;
       /** Style Revision */
       style_revision: number;
-    };
-    /**
-     * FrameMinimal 
-     * @description Frame Model, not including the fields required to place within a storyboard
-     */
-    FrameMinimal: {
-      /** Prompt */
-      prompt: string;
       /**
-       * Image Url 
-       * Format: uri
+       * Default 
+       * @description Whether this frame is the default frame for the frame index and style revision 
+       * @default false
        */
-      image_url: string;
-      /**
-       * Args 
-       * @description The arguments used to generate the frame
-       */
-      args?: Record<string, never>;
-      /**
-       * @description The model used to generate the frame 
-       * @default dall_e
-       */
-      model?: components["schemas"]["ImageGeneratorModel"];
-      /**
-       * Style Id 
-       * @description The style id used to generate the frame
-       */
-      style_id: string;
-      /** Frame Index */
-      frame_index: number;
-    };
-    /** FramesToImagesRequest */
-    FramesToImagesRequest: {
-      /** Prompts */
-      prompts: (string)[];
-      /**
-       * Style Id 
-       * @description The style id, a random hex string of length 7 (14 characters)
-       */
-      style_id?: string;
-      /** @default dall_e */
-      backend?: components["schemas"]["ImageGeneratorModel"];
+      default?: boolean;
     };
     /** HTTPValidationError */
     HTTPValidationError: {
@@ -291,73 +267,6 @@ export interface components {
      * @enum {string}
      */
     ImageGeneratorModel: "replicate_sd_2" | "dall_e";
-    /** PromptToFramesRequest */
-    PromptToFramesRequest: {
-      /** Prompt */
-      prompt: string;
-      /** Frame Count */
-      frame_count: number;
-      /**
-       * Max Tokens 
-       * @default 256
-       */
-      max_tokens?: number;
-      /**
-       * Temperature 
-       * @default 0.7
-       */
-      temperature?: number;
-      /**
-       * Top P 
-       * @default 1
-       */
-      top_p?: number;
-      /**
-       * Frequency Penalty 
-       * @default 0
-       */
-      frequency_penalty?: number;
-      /**
-       * Presence Penalty 
-       * @default 0
-       */
-      presence_penalty?: number;
-    };
-    /** PromptToFramesResponse */
-    PromptToFramesResponse: {
-      /** Frames */
-      frames: (string)[];
-      /** Llm Response */
-      llm_response: Record<string, never>;
-    };
-    /** PromptToImagesRequest */
-    PromptToImagesRequest: {
-      /** Prompt */
-      prompt: string;
-      /** Frame Count */
-      frame_count: number;
-      /**
-       * Style Id 
-       * @description The style id, a random hex string of length 7 (14 characters)
-       */
-      style_id?: string;
-      /** @default dall_e */
-      backend?: components["schemas"]["ImageGeneratorModel"];
-    };
-    /** PromptToImagesResponse */
-    PromptToImagesResponse: {
-      /** Frames */
-      frames: (components["schemas"]["FrameMinimal"])[];
-      llm_response: components["schemas"]["PromptToFramesResponse"];
-    };
-    /** ReviseFrameRequest */
-    ReviseFrameRequest: {
-      /**
-       * Prompt 
-       * @description The prompt for the frame, should be a single sentence
-       */
-      prompt: string;
-    };
     /**
      * Storyboard 
      * @description Style Model, contains a prompt for style generation and a list of supported models
@@ -384,12 +293,6 @@ export interface components {
        */
       description?: string;
       /**
-       * Public 
-       * @description If true, the storyboard is public 
-       * @default false
-       */
-      public?: boolean;
-      /**
        * @description The status of the storyboard 
        * @default pending
        */
@@ -409,6 +312,11 @@ export interface components {
        * @description Each item is the style id used to generate the corresponding revision of the storyboard
        */
       style_revisions?: (components["schemas"]["Style"])[];
+      /**
+       * Published Style Id 
+       * @description The style to show when the storyboard is first loaded
+       */
+      published_style_id?: string;
       /**
        * Frame Count 
        * @description The number of frames in the storyboard
@@ -602,6 +510,12 @@ export interface components {
        */
       orphaned?: boolean;
       /**
+       * Translate 
+       * @description Whether to translate the transcription 
+       * @default false
+       */
+      translate?: boolean;
+      /**
        * Error Message 
        * @description Error message if the transcription failed 
        * @example File is not a valid audio or video file
@@ -613,11 +527,17 @@ export interface components {
        */
       file_ffprobe?: Record<string, never>;
       /**
-       * File Type 
+       * File Mimetype 
        * @description Mimetype of file 
        * @example audio/webm
        */
-      file_type?: string;
+      file_mimetype?: string;
+      /**
+       * File Extension 
+       * @description File extension 
+       * @example .webm
+       */
+      file_extension?: string;
       /**
        * Url 
        * Format: uri 
@@ -644,12 +564,6 @@ export interface components {
        */
       uploaded?: boolean;
       /**
-       * Transcoded 
-       * @description Whether the file has been transcoded 
-       * @default false
-       */
-      transcoded?: boolean;
-      /**
        * Transcribed 
        * @description Whether the file has been transcribed 
        * @default false
@@ -666,13 +580,15 @@ export interface components {
        */
       transcription_backend?: components["schemas"]["TranscriptionInferenceBackend"];
       /**
-       * Transcription Result Json 
-       * @description Transcription result from the model
+       * Transcription Progress 
+       * @description Progress of the transcription (0.0 - 1.0) 
+       * @default 0 
+       * @example 0.5
        */
-      transcription_result_json?: Record<string, never>;
+      transcription_progress?: number;
       /**
        * Transcription Result 
-       * @description Timestamped transcription result from the model
+       * @description Timestamped & processed transcription result from the model
        */
       transcription_result?: (components["schemas"]["TranscriptionResultSegment"])[];
       /**
@@ -687,7 +603,7 @@ export interface components {
      * @description An enumeration. 
      * @enum {unknown}
      */
-    TranscriptionInferenceBackend: "huggingface" | "whisper.cpp" | "banana" | "replicate";
+    TranscriptionInferenceBackend: "huggingface" | "whisper.cpp" | "replicate";
     /**
      * TranscriptionInferenceModel 
      * @description An enumeration. 
@@ -727,7 +643,20 @@ export interface components {
      * @description An enumeration. 
      * @enum {unknown}
      */
-    TranscriptionStatus: "pending" | "uploading" | "uploaded" | "validating" | "validated" | "transcoding" | "transcoded" | "transcribing" | "complete" | "validation_failed" | "failed";
+    TranscriptionStatus: "pending" | "uploading" | "uploaded" | "validating" | "validated" | "transcribing" | "complete" | "validation_failed" | "failed";
+    /** UpdateFrameRequest */
+    UpdateFrameRequest: {
+      /**
+       * Prompt 
+       * @description The prompt for the frame, should be a single sentence
+       */
+      prompt?: string;
+      /**
+       * Default 
+       * @description If true, the frame will be set as the default frame for the frame index and style revision
+       */
+      default?: boolean;
+    };
     /** UpdateStoryboardRequest */
     UpdateStoryboardRequest: {
       /**
@@ -746,11 +675,51 @@ export interface components {
        */
       description?: string;
       /**
-       * Public 
-       * @description If true, the storyboard is public
+       * Published Style Id 
+       * @description The style to show when the storyboard is first loaded. Set to empty string to unpublish.
        */
-      public?: boolean;
+      published_style_id?: string;
     };
+    /**
+     * User 
+     * @description User Model
+     */
+    User: {
+      /**
+       * User Id 
+       * Format: uuid4 
+       * @description The user's unique id
+       */
+      user_id?: string;
+      /**
+       * Full Name 
+       * @description The user's full name 
+       * @default Joe Schmoe
+       */
+      full_name?: string;
+      /**
+       * Email 
+       * Format: email 
+       * @description The user's email address
+       */
+      email: string;
+      /**
+       * @description The user's group 
+       * @default USER
+       */
+      group?: components["schemas"]["UserGroup"];
+      /**
+       * Stripe Customer Id 
+       * @description The user's stripe customer id
+       */
+      stripe_customer_id?: string;
+    };
+    /**
+     * UserGroup 
+     * @description An enumeration. 
+     * @enum {unknown}
+     */
+    UserGroup: "ADMIN" | "USER";
     /** ValidationError */
     ValidationError: {
       /** Location */
@@ -783,22 +752,35 @@ export interface operations {
       };
     };
   };
-  prompt_to_frames_v1_sbm_inference_prompt_to_frames_post: {
+  get_users_v1_users__get: {
     /**
-     * Prompt To Frames 
-     * @deprecated 
-     * @description This endpoint will take a prompt and return a list of frames, each frame being a string. The frames will be generated using the OpenAI API.
+     * Get Users 
+     * @description This endpoint will return all users.
+     */
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": (components["schemas"]["User"])[];
+        };
+      };
+    };
+  };
+  create_user_v1_users__post: {
+    /**
+     * Create User 
+     * @description This endpoint will take a user and create a new user.
      */
     requestBody: {
       content: {
-        "application/json": components["schemas"]["PromptToFramesRequest"];
+        "application/json": components["schemas"]["User"];
       };
     };
     responses: {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": components["schemas"]["PromptToFramesResponse"];
+          "application/json": components["schemas"]["User"];
         };
       };
       /** @description Validation Error */
@@ -809,22 +791,21 @@ export interface operations {
       };
     };
   };
-  frames_to_images_v1_sbm_inference_frames_to_images_post: {
+  get_user_v1_users__user_id__get: {
     /**
-     * Frames To Images 
-     * @deprecated 
-     * @description This method will take a list of frame prompts, stylize them, and return a list of frame images
+     * Get User 
+     * @description This endpoint will take a user id and return the user.
      */
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["FramesToImagesRequest"];
+    parameters: {
+      path: {
+        user_id: string;
       };
     };
     responses: {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": (components["schemas"]["FrameMinimal"])[];
+          "application/json": components["schemas"]["User"];
         };
       };
       /** @description Validation Error */
@@ -835,33 +816,7 @@ export interface operations {
       };
     };
   };
-  prompt_to_images_v1_sbm_inference_prompt_to_images_post: {
-    /**
-     * Prompt To Images 
-     * @deprecated 
-     * @description This method will take a story prompt and return a list of frame images as well as the story itself
-     */
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["PromptToImagesRequest"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["PromptToImagesResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  get_storyboards_v1_sbm_storyboard__get: {
+  get_storyboards_v1_sbm_storyboards__get: {
     /**
      * Get Storyboards 
      * @description This endpoint will return a list of all storyboards.
@@ -886,11 +841,16 @@ export interface operations {
       };
     };
   };
-  create_storyboard_v1_sbm_storyboard__post: {
+  create_storyboard_v1_sbm_storyboards__post: {
     /**
      * Create Storyboard 
      * @description This endpoint will take a story prompt and return a list of frames, each frame being a string frame description and an image URL.
      */
+    parameters?: {
+      query?: {
+        do_async?: boolean;
+      };
+    };
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateStoryboardRequest"];
@@ -911,7 +871,7 @@ export interface operations {
       };
     };
   };
-  get_storyboard_v1_sbm_storyboard__storyboard_id__get: {
+  get_storyboard_v1_sbm_storyboards__storyboard_id__get: {
     /**
      * Get Storyboard 
      * @description This endpoint will take a storyboard id and return the entire storyboard object, with frames and styles and revisions.
@@ -936,12 +896,15 @@ export interface operations {
       };
     };
   };
-  update_storyboard_v1_sbm_storyboard__storyboard_id__post: {
+  update_storyboard_v1_sbm_storyboards__storyboard_id__post: {
     /**
      * Update Storyboard 
      * @description This endpoint will take a storyboard id and style id, and return the entire storyboard object, with frames and styles and revisions.
      */
     parameters: {
+      query?: {
+        do_async?: boolean;
+      };
       path: {
         storyboard_id: string;
       };
@@ -966,7 +929,7 @@ export interface operations {
       };
     };
   };
-  delete_storyboard_v1_sbm_storyboard__storyboard_id__delete: {
+  delete_storyboard_v1_sbm_storyboards__storyboard_id__delete: {
     /**
      * Delete Storyboard 
      * @description This endpoint will take a storyboard id and delete the entire storyboard object, with frames and styles and revisions.
@@ -991,14 +954,40 @@ export interface operations {
       };
     };
   };
-  get_storyboard_frames_v1_sbm_storyboard__storyboard_id__frames_get: {
+  get_storyboard_published_v1_sbm_storyboards__storyboard_id__published_get: {
+    /**
+     * Get Storyboard Published 
+     * @description This endpoint will take a storyboard id and return the entire storyboard object, with frames and styles and revisions. Essentially, published frames is the default frames of the published style.
+     */
+    parameters: {
+      path: {
+        storyboard_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["Storyboard"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_storyboard_frames_v1_sbm_storyboards__storyboard_id__frames_get: {
     /**
      * Get Storyboard Frames 
-     * @description This endpoint will take a storyboard id optionally a style_id and return the frames associated in a 3D matrix [frame_index][style_revision][frame_revision].
+     * @description This endpoint will take a storyboard id and return all frames in the storyboard.
      */
     parameters: {
       query?: {
         style_id?: string;
+        default?: boolean;
       };
       path: {
         storyboard_id: string;
@@ -1019,10 +1008,10 @@ export interface operations {
       };
     };
   };
-  get_storyboard_frame_index_v1_sbm_storyboard__storyboard_id__frames__frame_index__get: {
+  get_storyboard_frame_index_v1_sbm_storyboards__storyboard_id__frames__frame_index__get: {
     /**
      * Get Storyboard Frame Index 
-     * @description This endpoint will take a storyboard id, frame index, and optionally a style_id and return the frames associated in a 2D matrix [frame_index][style_revision][frame_revision].
+     * @description This endpoint will take a storyboard id and a frame index and return all frames in the storyboard with that index. For example, if the storyboard has 5 frames, and the frame index is 2, this endpoint will return the 3rd frame.
      */
     parameters: {
       query?: {
@@ -1073,9 +1062,9 @@ export interface operations {
       };
     };
   };
-  revise_frame_v1_sbm_frames__frame_id__post: {
+  update_frame_v1_sbm_frames__frame_id__post: {
     /**
-     * Revise Frame 
+     * Update Frame 
      * @description This endpoint will take a storyboard id and frame index, and return the revised frame.
      */
     parameters: {
@@ -1085,7 +1074,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["ReviseFrameRequest"];
+        "application/json": components["schemas"]["UpdateFrameRequest"];
       };
     };
     responses: {
@@ -1093,6 +1082,31 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["Frame"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_frame_v1_sbm_frames__frame_id__delete: {
+    /**
+     * Delete Frame 
+     * @description This endpoint will take a frame id and delete the frame.
+     */
+    parameters: {
+      path: {
+        frame_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": Record<string, never>;
         };
       };
       /** @description Validation Error */
@@ -1188,6 +1202,20 @@ export interface operations {
       422: {
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_transcriptions_v1_scribe_transcriptions_get: {
+    /**
+     * Get Transcriptions 
+     * @description Get all the transcription jobs for the user
+     */
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": (components["schemas"]["Transcription"])[];
         };
       };
     };

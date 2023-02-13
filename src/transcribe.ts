@@ -109,7 +109,7 @@ export class TranscriptionEngine {
 
         if (this.settings.debug) console.log(create_transcription_response);
         if (this.settings.debug) console.log('Uploading file to Scribe S3...');
-        if (this.settings.verbosity >= 2) new Notice('Uploading file to Scribe S3...', 1000);
+        if (this.settings.verbosity >= 1) new Notice('Uploading file to Scribe S3...', 2500);
 
         if (create_transcription_response.upload_request === undefined || create_transcription_response.upload_request.url === undefined || create_transcription_response.upload_request.fields === undefined) {
             if (this.settings.debug) console.error('Scribe returned an invalid upload request');
@@ -144,7 +144,7 @@ export class TranscriptionEngine {
         // Upload the file to Scribe S3
         await requestUrl(upload_file_request);
         if (this.settings.debug) console.log('File uploaded to Scribe S3');
-        if (this.settings.verbosity >= 1) new Notice('File uploaded to Scribe S3', 1000);
+        if (this.settings.verbosity >= 1) new Notice('File successfully uploaded to Scribe', 2500);
 
         // Wait for Scribe to finish transcribing the file
 
@@ -158,37 +158,57 @@ export class TranscriptionEngine {
 
         // Poll Scribe until the transcription is complete
         let tries = 0;
+        const max_tries = 100;
+        const sleep_time = 3000;
+
+        let transcribing_notice: Notice | undefined;
+
         // eslint-disable-next-line no-constant-condition
         while (true) {
             // Get the transcription status
-            const get_transcription_response: paths['/v1/scribe/transcriptions/{transcription_id}']['get']['responses']['200']['content']['application/json'] = await requestUrl(get_transcription_request).json;
-            if (this.settings.debug) console.log(get_transcription_response);
+            const transcription: paths['/v1/scribe/transcriptions/{transcription_id}']['get']['responses']['200']['content']['application/json'] = await requestUrl(get_transcription_request).json;
+            if (this.settings.debug) console.log(transcription);
+
+            // Show notice of status change if verbosity is high enough
+            if (this.settings.verbosity >= 1) {
+                if (transcription.status == 'transcribing') {
+                    if (transcribing_notice === undefined && transcription.transcription_progress !== undefined) { transcribing_notice = new Notice(`Scribe transcribing file: ${transcription.transcription_progress * 100}%`, max_tries*sleep_time); }
+
+                    else if (transcription.transcription_progress !== undefined) {
+                        transcribing_notice?.setMessage(`Scribe transcribing file: ${transcription.transcription_progress * 100}%`)
+                    }
+                }
+            }
 
             // If the transcription is complete, return the transcription text
-            if (get_transcription_response.status == 'complete' &&
-                get_transcription_response.transcription_text !== undefined &&
-                get_transcription_response.transcription_result !== undefined) {
+            if (transcription.status == 'complete' &&
+                transcription.transcription_text !== undefined &&
+                transcription.transcription_result !== undefined) {
                 // Idk how asserts work in JS, but this should be an assert
+
+                if (transcribing_notice !== undefined) transcribing_notice.hide();
                 if (this.settings.debug) console.log('Scribe finished transcribing');
-                if (this.settings.timestamps) return this.segmentsToTimestampedString(get_transcription_response.transcription_result);
-                else return get_transcription_response.transcription_text;
+                if (this.settings.verbosity >= 1) new Notice('Scribe finished transcribing', 2500)
+
+                if (this.settings.timestamps) return this.segmentsToTimestampedString(transcription.transcription_result);
+                else return transcription.transcription_text;
             }
-            else if (tries > 60) {
+            else if (tries > max_tries) {
                 if (this.settings.debug) console.error('Scribe took too long to transcribe the file');
                 return Promise.reject('Scribe took too long to transcribe the file');
             }
-            else if (get_transcription_response.status == 'failed') {
+            else if (transcription.status == 'failed') {
                 if (this.settings.debug) console.error('Scribe failed to transcribe the file');
                 return Promise.reject('Scribe failed to transcribe the file');
             }
-            else if (get_transcription_response.status == 'validation_failed') {
+            else if (transcription.status == 'validation_failed') {
                 if (this.settings.debug) console.error('Scribe has detected an invalid file');
                 return Promise.reject('Scribe has detected an invalid file');
             }
             // If the transcription is still in progress, wait 3 seconds and try again
             else {
                 tries += 1;
-                await sleep(3000);
+                await sleep(sleep_time);
             }
         }
     }
