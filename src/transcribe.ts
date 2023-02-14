@@ -1,5 +1,6 @@
 import { TranscriptionSettings } from "src/main";
 import { Notice, requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
+import { format } from "date-fns";
 import { paths, components } from "./types/gambitengine";
 import { payloadGenerator, PayloadData } from "src/utils";
 
@@ -22,23 +23,24 @@ export class TranscriptionEngine {
         this.vault = vault;
     }
 
-    segmentsToTimestampedString(segments: components['schemas']['TranscriptionResultSegment'][]): string {
-        let transcription = "";
-        const duration_seconds = Math.floor(segments[segments.length - 1].end);
-        let start_iso_slice = 14;
-        if (duration_seconds >= 3600) start_iso_slice = 11;
-        for (const s of segments) {
-            if (typeof s.start === 'number' && typeof s.text === 'string') {
-                // Convert the start and end times to ISO 8601 format and then substring to get the HH:MM:SS portion
-                const start = new Date(Math.floor(s.start) * 1000).toISOString().substring(start_iso_slice, 19)
-                const end = new Date(Math.floor(s.end) * 1000).toISOString().substring(start_iso_slice, 19)
-                const timestamp = `\`[${start} - ${end}]\``
-                // Add the timestamp and the text to the transcription
-                transcription += timestamp + ': ' + s.text + "\n"
-            }
-            else {
-                if (this.settings.debug) console.error(`Invalid segment: ${s}`)
-            }
+    segmentsToTimestampedString(segments: components['schemas']['TranscriptionResultSegment'][], timestampFormat: string): string {
+        let transcription = '';
+        for (const segment of segments) {
+            // Start and end are second floats with 2 decimal places
+            // Convert to milliseconds and then to a date object
+            let start = new Date(segment.start * 1000);
+            let end = new Date(segment.end * 1000);
+            
+            // Subtract timezone to get UTC
+            start = new Date(start.getTime() + start.getTimezoneOffset() * 60000);
+            end = new Date(end.getTime() + end.getTimezoneOffset() * 60000);
+
+            // Format the date objects using the timestamp format
+            const start_formatted = format(start, timestampFormat);
+            const end_formatted = format(end, timestampFormat);
+
+            const segment_string = `${start_formatted} - ${end_formatted}: ${segment.text}\n`;
+            transcription += segment_string;
         }
         return transcription;
     }
@@ -76,13 +78,12 @@ export class TranscriptionEngine {
 
         return requestUrl(options).then(async (response) => {
             if (this.settings.debug) console.log(response);
-
             // WhisperASR returns a JSON object with a text field containing the transcription and segments field
-            if (this.settings.timestamps) return this.segmentsToTimestampedString(response.json.segments);
-            else {
-                const transcription: string = response.json.text;
-                return transcription;
-            }
+
+            // Pull transcription from either response.text or response.json.text
+            if (typeof response.text === 'string') return response.text;
+            else return response.json.text;
+
         }).catch((error) => {
             if (this.settings.debug) console.error(error);
             return Promise.reject(error);
@@ -95,15 +96,38 @@ export class TranscriptionEngine {
         if (this.settings.debug) api_base = 'https://dev.api.gambitengine.com'
         else api_base = 'https://api.gambitengine.com'
 
+        // Set up FFMPEG if we are on desktop
+        // if (Platform.isDesktopApp) {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        //     const pathToFfmpeg = require('ffmpeg-static');
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        //     const ffmpeg = require('fluent-ffmpeg');
+        //     ffmpeg.setFfmpegPath(pathToFfmpeg);
+
+        // Convert the file to a MP3 file and save it to memory
+        //     const new_file = await new Promise((resolve, reject) => {
+        //         ffmpeg(this.vault.readBinary(file))
+        //             .toFormat('mp3')
+        //             .on('error', (err: any) => {
+        //                 if (this.settings.debug) console.error(err);
+        //                 reject(err);
+        //             })
+        //             .on('end', () => {
+        //                 if (this.settings.debug) console.log('Finished processing');
+        //                 resolve(file);
+        //             })
+        //             .pipe();
+        //     });
+        //     console.log(new_file);
+        // }
+
         const create_transcription_request: RequestUrlParam = {
             method: 'POST',
             url: `${api_base}/v1/scribe/transcriptions`,
             headers: { 'Authorization': `Bearer ${this.settings.scribeToken}` },
             body: JSON.stringify({ 'translate': this.settings.translate }),
         }
-        console.log(this.settings.translate);
 
-        if (this.settings.debug) console.log("Transcribing with Scribe");
         // Create the transcription request, then upload the file to Scribe S3
         const create_transcription_response: paths['/v1/scribe/transcriptions']['post']['responses']['201']['content']['application/json'] = await requestUrl(create_transcription_request).json
 
@@ -172,7 +196,7 @@ export class TranscriptionEngine {
             // Show notice of status change if verbosity is high enough
             if (this.settings.verbosity >= 1) {
                 if (transcription.status == 'transcribing') {
-                    if (transcribing_notice === undefined && transcription.transcription_progress !== undefined) { transcribing_notice = new Notice(`Scribe transcribing file: ${transcription.transcription_progress * 100}%`, max_tries*sleep_time); }
+                    if (transcribing_notice === undefined && transcription.transcription_progress !== undefined) { transcribing_notice = new Notice(`Scribe transcribing file: ${transcription.transcription_progress * 100}%`, 5000); }
 
                     else if (transcription.transcription_progress !== undefined) {
                         transcribing_notice?.setMessage(`Scribe transcribing file: ${transcription.transcription_progress * 100}%`)
@@ -190,7 +214,7 @@ export class TranscriptionEngine {
                 if (this.settings.debug) console.log('Scribe finished transcribing');
                 if (this.settings.verbosity >= 1) new Notice('Scribe finished transcribing', 2500)
 
-                if (this.settings.timestamps) return this.segmentsToTimestampedString(transcription.transcription_result);
+                if (this.settings.timestamps) return this.segmentsToTimestampedString(transcription.transcription_result, this.settings.timestampFormat);
                 else return transcription.transcription_text;
             }
             else if (tries > max_tries) {

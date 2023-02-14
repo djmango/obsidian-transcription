@@ -4,6 +4,7 @@ import { TranscriptionEngine } from 'src/transcribe';
 
 interface TranscriptionSettings {
 	timestamps: boolean;
+	timestampFormat: string;
 	translate: boolean;
 	verbosity: number;
 	whisperASRUrl: string;
@@ -14,6 +15,7 @@ interface TranscriptionSettings {
 
 const DEFAULT_SETTINGS: TranscriptionSettings = {
 	timestamps: false,
+	timestampFormat: 'HH:mm:ss',
 	translate: false,
 	verbosity: 1,
 	whisperASRUrl: 'http://localhost:9000',
@@ -46,7 +48,6 @@ export default class Transcription extends Plugin {
 
 				// Get all linked files in the markdown file
 				const filesLinked = Object.keys(this.app.metadataCache.resolvedLinks[markdownFilePath]);
-				console.log(this.app.metadataCache);
 
 				// Now that we have all the files linked in the markdown file, we need to filter them by the file extensions we want to transcribe
 				const filesToTranscribe: TFile[] = [];
@@ -74,8 +75,6 @@ export default class Transcription extends Plugin {
 					if (this.settings.debug) console.log('Transcribing ' + fileToTranscribe.path);
 
 					this.transcription_engine.getTranscription(fileToTranscribe).then(async (transcription) => {
-						if (this.settings.debug) console.log(transcription);
-
 						let fileText = await this.app.vault.read(view.file)
 						const fileLinkString = this.app.metadataCache.fileToLinktext(fileToTranscribe, view.file.path); // This is the string that is used to link the audio file in the markdown file. If files are moved this potentially breaks, but Obsidian has built-in handlers for this, and handling that is outside the scope of this plugin
 						const fileLinkStringTagged = `[[${fileLinkString}]]`; // This is the string that is used to link the audio file in the markdown file.
@@ -179,16 +178,6 @@ class TranscriptionSettingTab extends PluginSettingTab {
 
 
 		new Setting(containerEl)
-			.setName('Enable timestamps')
-			.setDesc('Add timestamps to the beginning of each line')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.timestamps)
-				.onChange(async (value) => {
-					this.plugin.settings.timestamps = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
 			.setName('Scribe Settings')
 			.setClass('scribe-settings')
 			.setHeading()
@@ -205,8 +194,34 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setName('Enable timestamps')
+			.setDesc('Add timestamps to the beginning of each line')
+			.setClass('scribe-settings')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.timestamps)
+				.onChange(async (value) => {
+					this.plugin.settings.timestamps = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Timestamp format')
+			.setDesc('The format of the timestamps: date-fns.org/docs/format')
+			.setClass('scribe-settings')
+			.addDropdown(dropdown => dropdown
+				.addOption('HH:mm:ss', 'HH:mm:ss')
+				.addOption('mm:ss', 'mm:ss')
+				.addOption('ss', 'ss')
+				.setValue(this.plugin.settings.timestampFormat)
+				.onChange(async (value) => {
+					// Validate with regex that we have a valid date-fns format
+					this.plugin.settings.timestampFormat = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
 			.setName('Scribe Token')
-			.setDesc('The token used to authenticate with the Scribe API. Get one at https://scribe.gambitengine.com')
+			.setDesc('The token used to authenticate with the Scribe API. Get one at scribe.gambitengine.com')
 			.setClass('scribe-settings')
 			.addText(text => text
 				.setPlaceholder(DEFAULT_SETTINGS.scribeToken)
