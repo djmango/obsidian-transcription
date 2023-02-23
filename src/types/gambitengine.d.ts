@@ -28,6 +28,30 @@ export interface paths {
      */
     get: operations["get_user_v1_users__user_id__get"];
   };
+  "/v1/api_keys/": {
+    /**
+     * Get Api Keys 
+     * @description This endpoint will return all API Keys for a user.
+     */
+    get: operations["get_api_keys_v1_api_keys__get"];
+    /**
+     * Create Api Key 
+     * @description This endpoint will create an API Key for a user.
+     */
+    post: operations["create_api_key_v1_api_keys__post"];
+  };
+  "/v1/api_keys/{api_key_id}": {
+    /**
+     * Get Api Key 
+     * @description This endpoint will return an API Key.
+     */
+    get: operations["get_api_key_v1_api_keys__api_key_id__get"];
+    /**
+     * Delete Api Key 
+     * @description This endpoint will delete an API Key.
+     */
+    delete: operations["delete_api_key_v1_api_keys__api_key_id__delete"];
+  };
   "/v1/sbm/storyboards/": {
     /**
      * Get Storyboards 
@@ -126,7 +150,7 @@ export interface paths {
      */
     get: operations["get_transcriptions_v1_scribe_transcriptions_get"];
     /**
-     * Create Transcription 
+     * Create a transcription job 
      * @description This method will create a transcription job from a file URL or return a presigned URL to upload an audio file to
      */
     post: operations["create_transcription_v1_scribe_transcriptions_post"];
@@ -156,6 +180,41 @@ export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
+    /** APIKey */
+    APIKey: {
+      /**
+       * Api Key Id 
+       * @description The API Key's unique id
+       */
+      api_key_id?: string;
+      /**
+       * User Id 
+       * Format: uuid4 
+       * @description The user's unique id
+       */
+      user_id: string;
+      /**
+       * Api Key Secret 
+       * @description The API Key's secret, this is only accessible when creating a new API Key
+       */
+      api_key_secret?: string;
+      /**
+       * Api Key Secret Hash 
+       * @description The API Key's secret hash
+       */
+      api_key_secret_hash?: string;
+      /**
+       * Metadata 
+       * @description The API Key's metadata
+       */
+      metadata?: Record<string, never>;
+      /**
+       * Enabled 
+       * @description Whether the API Key is enabled 
+       * @default true
+       */
+      enabled?: boolean;
+    };
     /** CreateStoryboardRequest */
     CreateStoryboardRequest: {
       /** Original Prompt */
@@ -184,10 +243,15 @@ export interface components {
       url?: string;
       /**
        * Translate 
-       * @description Whether or not to translate the transcription 
-       * @default true
+       * @description Whether or not to translate the transcription into English 
+       * @default false
        */
       translate?: boolean;
+      /**
+       * @description The language of the transcription. If this is not provided, the language will be detected automatically 
+       * @example fa
+       */
+      language?: components["schemas"]["TranscriptionLanguage"];
     };
     /** CreateTranscriptionResponse */
     CreateTranscriptionResponse: {
@@ -535,7 +599,7 @@ export interface components {
       /**
        * File Extension 
        * @description File extension 
-       * @example .webm
+       * @example webm
        */
       file_extension?: string;
       /**
@@ -580,36 +644,47 @@ export interface components {
        */
       transcription_backend?: components["schemas"]["TranscriptionInferenceBackend"];
       /**
-       * Transcription Progress 
+       * Progress 
        * @description Progress of the transcription (0.0 - 1.0) 
        * @default 0 
        * @example 0.5
        */
-      transcription_progress?: number;
+      progress?: number;
       /**
-       * Transcription Result 
+       * @description Language of the transcription 
+       * @example fa
+       */
+      language?: components["schemas"]["TranscriptionLanguage"];
+      /**
+       * Result 
        * @description Timestamped & processed transcription result from the model
        */
-      transcription_result?: (components["schemas"]["TranscriptionResultSegment"])[];
+      result?: (components["schemas"]["TranscriptionResultSegment"])[];
       /**
-       * Transcription Text 
+       * Text 
        * @description Transcription text 
        * @example Hello world
        */
-      transcription_text?: string;
+      text?: string;
     };
     /**
      * TranscriptionInferenceBackend 
      * @description An enumeration. 
      * @enum {unknown}
      */
-    TranscriptionInferenceBackend: "huggingface" | "whisper.cpp" | "replicate";
+    TranscriptionInferenceBackend: "huggingface" | "replicate";
     /**
      * TranscriptionInferenceModel 
      * @description An enumeration. 
      * @enum {unknown}
      */
-    TranscriptionInferenceModel: "openai/whisper-tiny" | "openai/whisper-tiny.en" | "openai/whisper-small" | "openai/whisper-small.en" | "openai/whisper-base" | "openai/whisper-base.en" | "openai/whisper-medium" | "openai/whisper-medium.en" | "openai/whisper-large";
+    TranscriptionInferenceModel: "openai/whisper-base" | "openai/whisper-medium" | "openai/whisper-large";
+    /**
+     * TranscriptionLanguage 
+     * @description An enumeration. 
+     * @enum {unknown}
+     */
+    TranscriptionLanguage: "af" | "am" | "ar" | "as" | "az" | "ba" | "be" | "bg" | "bn" | "bo" | "br" | "bs" | "ca" | "cs" | "cy" | "da" | "de" | "el" | "en" | "es" | "et" | "eu" | "fa" | "fi" | "fo" | "fr" | "gl" | "gu" | "ha" | "haw" | "hi" | "hr" | "ht" | "hu" | "hy" | "id" | "is" | "it" | "iw" | "ja" | "jw" | "ka" | "kk" | "km" | "kn" | "ko" | "la" | "lb" | "ln" | "lo" | "lt" | "lv" | "mg" | "mi" | "mk" | "ml" | "mn" | "mr" | "ms" | "mt" | "my" | "ne" | "nl" | "nn" | "no" | "oc" | "pa" | "pl" | "ps" | "pt" | "ro" | "ru" | "sa" | "sd" | "si" | "sk" | "sl" | "sn" | "so" | "sq" | "sr" | "su" | "sv" | "sw" | "ta" | "te" | "tg" | "th" | "tk" | "tl" | "tr" | "tt" | "uk" | "ur" | "uz" | "vi" | "yi" | "yo" | "zh";
     /** TranscriptionResultSegment */
     TranscriptionResultSegment: {
       /**
@@ -627,23 +702,13 @@ export interface components {
        * @description Text of the segment
        */
       text: string;
-      /**
-       * Seek 
-       * @description Seek time of the segment (milliseconds)
-       */
-      seek: number;
-      /**
-       * No Speech Prob 
-       * @description Probability that the segment is not speech
-       */
-      no_speech_prob: number;
     };
     /**
      * TranscriptionStatus 
      * @description An enumeration. 
      * @enum {unknown}
      */
-    TranscriptionStatus: "pending" | "uploading" | "uploaded" | "validating" | "validated" | "transcribing" | "complete" | "validation_failed" | "failed";
+    TranscriptionStatus: "pending" | "uploaded" | "validating" | "validated" | "transcribing" | "complete" | "validation_failed" | "failed";
     /** UpdateFrameRequest */
     UpdateFrameRequest: {
       /**
@@ -806,6 +871,106 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["User"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_api_keys_v1_api_keys__get: {
+    /**
+     * Get Api Keys 
+     * @description This endpoint will return all API Keys for a user.
+     */
+    parameters?: {
+      query?: {
+        user_id?: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": (components["schemas"]["APIKey"])[];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_api_key_v1_api_keys__post: {
+    /**
+     * Create Api Key 
+     * @description This endpoint will create an API Key for a user.
+     */
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["APIKey"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        content: {
+          "application/json": components["schemas"]["APIKey"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_api_key_v1_api_keys__api_key_id__get: {
+    /**
+     * Get Api Key 
+     * @description This endpoint will return an API Key.
+     */
+    parameters: {
+      path: {
+        api_key_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["APIKey"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_api_key_v1_api_keys__api_key_id__delete: {
+    /**
+     * Delete Api Key 
+     * @description This endpoint will delete an API Key.
+     */
+    parameters: {
+      path: {
+        api_key_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": Record<string, never>;
         };
       };
       /** @description Validation Error */
@@ -1211,6 +1376,11 @@ export interface operations {
      * Get Transcriptions 
      * @description Get all the transcription jobs for the user
      */
+    parameters?: {
+      query?: {
+        user_id?: string;
+      };
+    };
     responses: {
       /** @description Successful Response */
       200: {
@@ -1218,11 +1388,17 @@ export interface operations {
           "application/json": (components["schemas"]["Transcription"])[];
         };
       };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
     };
   };
   create_transcription_v1_scribe_transcriptions_post: {
     /**
-     * Create Transcription 
+     * Create a transcription job 
      * @description This method will create a transcription job from a file URL or return a presigned URL to upload an audio file to
      */
     requestBody?: {

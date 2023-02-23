@@ -30,7 +30,7 @@ export class TranscriptionEngine {
             // Convert to milliseconds and then to a date object
             let start = new Date(segment.start * 1000);
             let end = new Date(segment.end * 1000);
-            
+
             // Subtract timezone to get UTC
             start = new Date(start.getTime() + start.getTimezoneOffset() * 60000);
             end = new Date(end.getTime() + end.getTimezoneOffset() * 60000);
@@ -96,31 +96,6 @@ export class TranscriptionEngine {
         if (this.settings.debug) api_base = 'https://dev.api.gambitengine.com'
         else api_base = 'https://api.gambitengine.com'
 
-        // Set up FFMPEG if we are on desktop
-        // if (Platform.isDesktopApp) {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        //     const pathToFfmpeg = require('ffmpeg-static');
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        //     const ffmpeg = require('fluent-ffmpeg');
-        //     ffmpeg.setFfmpegPath(pathToFfmpeg);
-
-        // Convert the file to a MP3 file and save it to memory
-        //     const new_file = await new Promise((resolve, reject) => {
-        //         ffmpeg(this.vault.readBinary(file))
-        //             .toFormat('mp3')
-        //             .on('error', (err: any) => {
-        //                 if (this.settings.debug) console.error(err);
-        //                 reject(err);
-        //             })
-        //             .on('end', () => {
-        //                 if (this.settings.debug) console.log('Finished processing');
-        //                 resolve(file);
-        //             })
-        //             .pipe();
-        //     });
-        //     console.log(new_file);
-        // }
-
         const create_transcription_request: RequestUrlParam = {
             method: 'POST',
             url: `${api_base}/v1/scribe/transcriptions`,
@@ -132,8 +107,8 @@ export class TranscriptionEngine {
         const create_transcription_response: paths['/v1/scribe/transcriptions']['post']['responses']['201']['content']['application/json'] = await requestUrl(create_transcription_request).json
 
         if (this.settings.debug) console.log(create_transcription_response);
-        if (this.settings.debug) console.log('Uploading file to Scribe S3...');
-        if (this.settings.verbosity >= 1) new Notice('Uploading file to Scribe S3...', 2500);
+        if (this.settings.debug) console.log('Uploading file to Scribe...');
+        if (this.settings.verbosity >= 1) new Notice('Uploading file to Scribe...', 3000);
 
         if (create_transcription_response.upload_request === undefined || create_transcription_response.upload_request.url === undefined || create_transcription_response.upload_request.fields === undefined) {
             if (this.settings.debug) console.error('Scribe returned an invalid upload request');
@@ -168,7 +143,7 @@ export class TranscriptionEngine {
         // Upload the file to Scribe S3
         await requestUrl(upload_file_request);
         if (this.settings.debug) console.log('File uploaded to Scribe S3');
-        if (this.settings.verbosity >= 1) new Notice('File successfully uploaded to Scribe', 2500);
+        if (this.settings.verbosity >= 1) new Notice('File successfully uploaded to Scribe', 3000);
 
         // Wait for Scribe to finish transcribing the file
 
@@ -185,7 +160,7 @@ export class TranscriptionEngine {
         const max_tries = 100;
         const sleep_time = 3000;
 
-        let transcribing_notice: Notice | undefined;
+        let last_percent = 0;
 
         // eslint-disable-next-line no-constant-condition
         while (true) {
@@ -196,26 +171,24 @@ export class TranscriptionEngine {
             // Show notice of status change if verbosity is high enough
             if (this.settings.verbosity >= 1) {
                 if (transcription.status == 'transcribing') {
-                    if (transcribing_notice === undefined && transcription.transcription_progress !== undefined) { transcribing_notice = new Notice(`Scribe transcribing file: ${transcription.transcription_progress * 100}%`, 5000); }
-
-                    else if (transcription.transcription_progress !== undefined) {
-                        transcribing_notice?.setMessage(`Scribe transcribing file: ${transcription.transcription_progress * 100}%`)
+                    if (transcription.progress !== last_percent && transcription.progress !== undefined) {
+                        new Notice(`Scribe transcribing file: ${transcription.progress * 100}%`, 3000);
+                        last_percent = transcription.progress;
                     }
                 }
             }
 
             // If the transcription is complete, return the transcription text
             if (transcription.status == 'complete' &&
-                transcription.transcription_text !== undefined &&
-                transcription.transcription_result !== undefined) {
+                transcription.text !== undefined &&
+                transcription.result !== undefined) {
                 // Idk how asserts work in JS, but this should be an assert
 
-                if (transcribing_notice !== undefined) transcribing_notice.hide();
                 if (this.settings.debug) console.log('Scribe finished transcribing');
-                if (this.settings.verbosity >= 1) new Notice('Scribe finished transcribing', 2500)
+                if (this.settings.verbosity >= 1) new Notice('Scribe finished transcribing', 3000)
 
-                if (this.settings.timestamps) return this.segmentsToTimestampedString(transcription.transcription_result, this.settings.timestampFormat);
-                else return transcription.transcription_text;
+                if (this.settings.timestamps) return this.segmentsToTimestampedString(transcription.result, this.settings.timestampFormat);
+                else return transcription.text;
             }
             else if (tries > max_tries) {
                 if (this.settings.debug) console.error('Scribe took too long to transcribe the file');
