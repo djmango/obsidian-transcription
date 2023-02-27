@@ -1,6 +1,7 @@
 import { ChildProcess } from 'child_process';
-import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TFile, Notice } from 'obsidian';
+import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TFile, Notice, Platform } from 'obsidian';
 import { TranscriptionEngine } from 'src/transcribe';
+import { StatusBar } from './status';
 
 interface TranscriptionSettings {
 	timestamps: boolean;
@@ -9,6 +10,7 @@ interface TranscriptionSettings {
 	verbosity: number;
 	whisperASRUrl: string;
 	debug: boolean;
+	dev: boolean;
 	scribeToken: string;
 	transcription_engine: string
 }
@@ -20,6 +22,7 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 	verbosity: 1,
 	whisperASRUrl: 'http://localhost:9000',
 	debug: false,
+	dev: false,
 	scribeToken: '',
 	transcription_engine: 'Scribe'
 }
@@ -31,11 +34,21 @@ export default class Transcription extends Plugin {
 	public static children: Array<ChildProcess> = [];
 	private static transcribeFileExtensions: string[] = ['mp3', 'wav', 'webm', 'ogg', 'flac', 'm4a', 'aac', 'amr', 'opus', 'aiff', 'm3gp', 'mp4', 'm4v', 'mov', 'avi', 'wmv', 'flv', 'mpeg', 'mpg', 'mkv']
 	public transcription_engine: TranscriptionEngine;
+	statusBar: StatusBar;
+
 	async onload() {
 		await this.loadSettings();
 		Transcription.plugin = this;
 		console.log('Loading Obsidian Transcription');
-		this.transcription_engine = new TranscriptionEngine(this.settings, this.app.vault)
+
+		if (!Platform.isMobileApp) {
+			this.statusBar = new StatusBar(this.addStatusBarItem());
+			this.registerInterval(
+				window.setInterval(() => this.statusBar.display(), 1000)
+			);
+		}
+
+		this.transcription_engine = new TranscriptionEngine(this.settings, this.app.vault, this.statusBar);
 
 		this.addCommand({
 			id: 'obsidian-transcription-transcribe-all-in-view',
@@ -90,6 +103,7 @@ export default class Transcription extends Plugin {
 
 					}).catch((error) => {
 						if (this.settings.debug) new Notice('Error transcribing file ' + fileToTranscribe.name + ': ' + error);
+						else if (this.settings.dev) throw error;
 						else new Notice('Error transcribing file, enable debug mode to see more');
 					});
 				}
@@ -259,6 +273,19 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.debug)
 				.onChange(async (value) => {
 					this.plugin.settings.debug = value;
+					// If this is toggled off, also turn off dev mode
+					if (!value) this.plugin.settings.dev = false;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Dev mode')
+			.setDesc('Enable dev mode to use the dev version of the plugin - only use this if you\'re a beta tester or developer, email sulaiman@gambitengine.com for more info')
+			.setClass('dev-mode')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.dev)
+				.onChange(async (value) => {
+					this.plugin.settings.dev = value;
 					await this.plugin.saveSettings();
 				}));
 
@@ -270,6 +297,14 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		else if (this.plugin.settings.transcription_engine == 'whisper_asr') {
 			containerEl.findAll('.scribe-settings').forEach((element) => { element.style.display = 'none'; });
 			containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'block'; });
+		}
+
+		// If debug mode is off, hide the dev mode setting
+		if (!this.plugin.settings.debug) {
+			containerEl.findAll('.dev-mode').forEach((element) => { element.style.display = 'none'; });
+		}
+		else {
+			containerEl.findAll('.dev-mode').forEach((element) => { element.style.display = 'block'; });
 		}
 	}
 }

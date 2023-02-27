@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-transcription",
-	"version": "1.0.0",
-	"description": "Obsidian plugin to create high-quality transcriptions from markdown linked audio files",
+	"version": "2.0.0",
+	"description": "Obsidian plugin to create high-quality text transcriptions from any media file, on any device",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
@@ -10,17 +10,20 @@
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
 	"keywords": [
-		"gambitengine",
-		"scribe",
-		"obsidian",
-		"transcription",
+		"audio transcription",
+		"audio-to-text",
 		"audio",
+		"gambitengine",
 		"markdown",
-		"whisper",
-		"speech",
+		"obsidian",
+		"plugin",
 		"recognition",
+		"scribe",
 		"speech-to-text",
-		"plugin"
+		"speech",
+		"stt",
+		"transcription",
+		"whisper"
 	],
 	"author": "djmango",
 	"license": "MIT",

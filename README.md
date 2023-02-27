@@ -1,6 +1,6 @@
 # Obsidian Transcription
 
-A plugin to generate super-fast high-quality transcriptions of any audio and video file via [OpenAI Whisper](https://openai.com/blog/whisper/) and [Scribe by GambitEngine](https://scribe.gambitengine.com).
+A plugin to generate high-quality transcriptions of any audio and video file via [OpenAI Whisper](https://openai.com/blog/whisper/) and [Scribe by GambitEngine](https://scribe.gambitengine.com).
 
 ![Demo](images/demo.gif)
 
@@ -10,7 +10,6 @@ A plugin to generate super-fast high-quality transcriptions of any audio and vid
 - Flexible transcription engines - cloud or local
   - [Scribe by GambitEngine](https://scribe.gambitengine.com)
   - [Whisper ASR](https://github.com/ahmetoner/whisper-asr-webservice)
-- Customizable output format
 - Start and end timestamps for each line of the transcription
 
 ## How to use

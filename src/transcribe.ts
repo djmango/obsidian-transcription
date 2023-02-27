@@ -3,6 +3,7 @@ import { Notice, requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
 import { format } from "date-fns";
 import { paths, components } from "./types/gambitengine";
 import { payloadGenerator, PayloadData } from "src/utils";
+import { StatusBar } from "./status";
 
 // This class is the parent for transcription engines. It takes settings and a file as an input and returns a transcription as a string
 
@@ -11,16 +12,19 @@ type TranscriptionBackend = (file: TFile) => Promise<string>;
 export class TranscriptionEngine {
     settings: TranscriptionSettings;
     vault: Vault;
-    transcription_engine: TranscriptionBackend
+    status_bar: StatusBar | null;
+
+    transcriptionEngine: TranscriptionBackend
 
     transcription_engines: { [key: string]: TranscriptionBackend } = {
         "scribe": this.getTranscriptionScribe,
         "whisper_asr": this.getTranscriptionWhisperASR
     }
 
-    constructor(settings: TranscriptionSettings, vault: Vault) {
+    constructor(settings: TranscriptionSettings, vault: Vault, statusBar: StatusBar | null) {
         this.settings = settings;
         this.vault = vault;
+        this.status_bar = statusBar;
     }
 
     segmentsToTimestampedString(segments: components['schemas']['TranscriptionResultSegment'][], timestampFormat: string): string {
@@ -53,8 +57,8 @@ export class TranscriptionEngine {
     async getTranscription(file: TFile): Promise<string> {
         if (this.settings.debug) console.log(`Transcription engine: ${this.settings.transcription_engine}`);
         const start = new Date();
-        this.transcription_engine = this.transcription_engines[this.settings.transcription_engine];
-        return this.transcription_engine(file).then((transcription) => {
+        this.transcriptionEngine = this.transcription_engines[this.settings.transcription_engine];
+        return this.transcriptionEngine(file).then((transcription) => {
             if (this.settings.debug) console.log(`Transcription: ${transcription}`);
             if (this.settings.debug) console.log(`Transcription took ${new Date().getTime() - start.getTime()} ms`);
             return transcription;
@@ -93,7 +97,7 @@ export class TranscriptionEngine {
     async getTranscriptionScribe(file: TFile): Promise<string> {
         // Declare constants for the Scribe API
         let api_base: string
-        if (this.settings.debug) api_base = 'https://dev.api.gambitengine.com'
+        if (this.settings.dev) api_base = 'https://dev.api.gambitengine.com'
         else api_base = 'https://api.gambitengine.com'
 
         const create_transcription_request: RequestUrlParam = {
@@ -108,7 +112,10 @@ export class TranscriptionEngine {
 
         if (this.settings.debug) console.log(create_transcription_response);
         if (this.settings.debug) console.log('Uploading file to Scribe...');
-        if (this.settings.verbosity >= 1) new Notice('Uploading file to Scribe...', 3000);
+        if (this.settings.verbosity >= 1) {
+            if (this.status_bar !== null) this.status_bar.displayMessage('Uploading file to Scribe...', 3000);
+            else new Notice('Uploading file to Scribe...', 3000);
+        }
 
         if (create_transcription_response.upload_request === undefined || create_transcription_response.upload_request.url === undefined || create_transcription_response.upload_request.fields === undefined) {
             if (this.settings.debug) console.error('Scribe returned an invalid upload request');
@@ -143,7 +150,10 @@ export class TranscriptionEngine {
         // Upload the file to Scribe S3
         await requestUrl(upload_file_request);
         if (this.settings.debug) console.log('File uploaded to Scribe S3');
-        if (this.settings.verbosity >= 1) new Notice('File successfully uploaded to Scribe', 3000);
+        if (this.settings.verbosity >= 1) {
+            if (this.status_bar !== null) this.status_bar.displayMessage('File successfully uploaded to Scribe', 3000);
+            else new Notice('File successfully uploaded to Scribe', 3000);
+        }
 
         // Wait for Scribe to finish transcribing the file
 
@@ -172,7 +182,7 @@ export class TranscriptionEngine {
             if (this.settings.verbosity >= 1) {
                 if (transcription.status == 'transcribing') {
                     if (transcription.progress !== last_percent && transcription.progress !== undefined) {
-                        new Notice(`Scribe transcribing file: ${transcription.progress * 100}%`, 3000);
+                        new Notice(`Scribe transcribing file: ${transcription.progress}%`, 3000);
                         last_percent = transcription.progress;
                     }
                 }
