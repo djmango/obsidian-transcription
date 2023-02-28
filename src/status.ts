@@ -53,11 +53,13 @@ export class StatusBar {
             if (lastForced) this.messages = [lastForced];
 
             if (this.currentMessage !== lastForced) {
-
                 this.currentMessage = lastForced;
                 if (!this.currentMessage) return;
                 this.currentMessage.timeShown = Date.now();
                 this.setText(this.currentMessage);
+            }
+            else if (this.currentMessage == lastForced && this.currentMessage && this.currentMessage.messageTimedOut()) {
+                this.clearText();
             }
         }
 
@@ -72,6 +74,10 @@ export class StatusBar {
                         this.setText(this.currentMessage);
                         this.currentMessage.timeShown = Date.now();
                     }
+                    else {
+                        this.currentMessage = undefined;
+                        this.clearText()
+                    }
                 } else {
                     this.currentMessage = undefined;
                     this.clearText()
@@ -84,6 +90,9 @@ export class StatusBar {
                 if (!this.currentMessage) return;
                 this.setText(this.currentMessage);
                 this.currentMessage.timeShown = Date.now();
+            }
+            else if (!this.currentMessage) {
+                this.clearText();
             }
         }
     }

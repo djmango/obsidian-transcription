@@ -183,7 +183,7 @@ export class TranscriptionEngine {
                 if (transcription.status == 'transcribing') {
                     if (transcription.progress !== last_percent && transcription.progress !== undefined) {
                         if (this.settings.verbosity >= 1) {
-                            if (this.status_bar !== null) this.status_bar.displayMessage(`${transcription.progress}%`, 3000, true, this.settings.kek_mode);
+                            if (this.status_bar !== null) this.status_bar.displayMessage(`${transcription.progress}%`, 10000, true, this.settings.kek_mode);
                             else new Notice(`Scribe transcribing file: ${transcription.progress}%`, 3000);
                         }
                         last_percent = transcription.progress;
