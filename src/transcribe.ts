@@ -113,7 +113,7 @@ export class TranscriptionEngine {
         if (this.settings.debug) console.log(create_transcription_response);
         if (this.settings.debug) console.log('Uploading file to Scribe...');
         if (this.settings.verbosity >= 1) {
-            if (this.status_bar !== null) this.status_bar.displayMessage('Uploading file to Scribe...', 3000);
+            if (this.status_bar !== null) this.status_bar.displayMessage('Uploading...', 5000);
             else new Notice('Uploading file to Scribe...', 3000);
         }
 
@@ -151,7 +151,7 @@ export class TranscriptionEngine {
         await requestUrl(upload_file_request);
         if (this.settings.debug) console.log('File uploaded to Scribe S3');
         if (this.settings.verbosity >= 1) {
-            if (this.status_bar !== null) this.status_bar.displayMessage('File successfully uploaded to Scribe', 3000);
+            if (this.status_bar !== null) this.status_bar.displayMessage('Uploaded!', 5000);
             else new Notice('File successfully uploaded to Scribe', 3000);
         }
 
@@ -182,7 +182,10 @@ export class TranscriptionEngine {
             if (this.settings.verbosity >= 1) {
                 if (transcription.status == 'transcribing') {
                     if (transcription.progress !== last_percent && transcription.progress !== undefined) {
-                        new Notice(`Scribe transcribing file: ${transcription.progress}%`, 3000);
+                        if (this.settings.verbosity >= 1) {
+                            if (this.status_bar !== null) this.status_bar.displayMessage(`${transcription.progress}%`, 3000, true, this.settings.kek_mode);
+                            else new Notice(`Scribe transcribing file: ${transcription.progress}%`, 3000);
+                        }
                         last_percent = transcription.progress;
                     }
                 }
@@ -195,7 +198,10 @@ export class TranscriptionEngine {
                 // Idk how asserts work in JS, but this should be an assert
 
                 if (this.settings.debug) console.log('Scribe finished transcribing');
-                if (this.settings.verbosity >= 1) new Notice('Scribe finished transcribing', 3000)
+                if (this.settings.verbosity >= 1) {
+                    if (this.status_bar !== null) this.status_bar.displayMessage('100% - Complete!', 3000, true);
+                    else new Notice('Scribe finished transcribing', 3000)
+                }
 
                 if (this.settings.timestamps) return this.segmentsToTimestampedString(transcription.result, this.settings.timestampFormat);
                 else return transcription.text;

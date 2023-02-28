@@ -1,49 +1,90 @@
+import { loading_messages } from "./kek";
+
 // Inspired by
 // https://github.com/renehernandez/obsidian-readwise/blob/eee5676524962ebfa7eaf1084e018dafe3c2f394/src/status.ts
-
 export class StatusBar {
     private messages: StatusBarMessage[] = [];
-    private currentMessage: StatusBarMessage;
+    private currentMessage: StatusBarMessage | undefined;
     private statusBarEl: HTMLElement;
+    private spent_messages: string[] = [];
 
     constructor(statusBarEl: HTMLElement) {
         this.statusBarEl = statusBarEl;
     }
 
-    displayMessage(message: string, timeout: number, force = false) {
+    // Return true if there is a message in the queue that is forced
+    hasForcedMessage() {
+        return this.messages.some((message) => message.force);
+    }
+
+    setText(message: StatusBarMessage) {
+        if (message.kek_mode) {
+            let kek = loading_messages[Math.floor(Math.random() * loading_messages.length)];
+            while (this.spent_messages.includes(kek)) {
+                kek = loading_messages[Math.floor(Math.random() * loading_messages.length)];
+            }
+            this.spent_messages.push(kek);
+            if (this.spent_messages.length > loading_messages.length) {
+                this.spent_messages = [];
+            }
+            this.statusBarEl.setText(message.message + " - " + kek);
+            return;
+        }
+        this.statusBarEl.setText(message.message);
+    }
+
+    clearText() {
+        this.statusBarEl.setText("");
+    }
+
+
+    displayMessage(message: string, timeout: number, force = false, kek_mode = false) {
         // Don't show the same message twice
         if (this.messages[0] && this.messages[0].message === message) return;
 
-        this.messages.push(new StatusBarMessage(`Transcribe: ${message.slice(0, 100)}`, timeout, force));
+        this.messages.push(new StatusBarMessage(`Transcribe: ${message.slice(0, 100)}`, timeout, force, kek_mode));
         this.display();
     }
 
     display() {
-        // Only act if the current message has timed out or we are forcing a new message
-        
-        // Okay TODO redo this logic, technically this is stupid but its 3 and i need to board plane
-        if (this.currentMessage && this.currentMessage.messageTimedOut()) {
-            // If there are more messages, display the next one
-            if (this.messages.length > 0) {
-                // If any message in the queue is forced, clear the queue and display the last forced message
-                if (this.messages.some((message) => message.force)) {
-                    const lastForced = this.messages.filter((message) => message.force).pop();
-                    if (lastForced) this.messages = [lastForced];
-                }
+        // First check if there are any forced messages, if so, clear the queue and queue the last forced message
+        if (this.hasForcedMessage()) {
+            const lastForced = this.messages.filter((message) => message.force).pop();
+            if (lastForced) this.messages = [lastForced];
 
-                // Display the next message
-                const currentMessage = this.messages.shift()
-                if (currentMessage) this.currentMessage = currentMessage; // This is just to make TypeScript happy
-                this.statusBarEl.setText(this.currentMessage.message);
-            } else { // Otherwise, clear the status bar
-                this.statusBarEl.setText("");
+            if (this.currentMessage !== lastForced) {
+
+                this.currentMessage = lastForced;
+                if (!this.currentMessage) return;
+                this.currentMessage.timeShown = Date.now();
+                this.setText(this.currentMessage);
             }
         }
-        else if (!this.currentMessage && this.messages.length > 0) {
-            // If the current message hasn't timed out, but there are more messages, display the next one
-            const currentMessage = this.messages.shift()
-            if (currentMessage) this.currentMessage = currentMessage; // This is just to make TypeScript happy
-            this.statusBarEl.setText(this.currentMessage.message);
+
+        // Otherwise check if we need to do anything to the queue
+        else {
+            // If the current message has timed out, display the next message if there is one
+            if (this.currentMessage && this.currentMessage.messageTimedOut()) {
+                if (this.messages.length > 0) {
+                    const currentMessage = this.messages.shift()
+                    this.currentMessage = currentMessage;
+                    if (this.currentMessage) {
+                        this.setText(this.currentMessage);
+                        this.currentMessage.timeShown = Date.now();
+                    }
+                } else {
+                    this.currentMessage = undefined;
+                    this.clearText()
+                }
+            }
+            // If there is no current message, display the next message if there is one
+            else if (!this.currentMessage && this.messages.length > 0) {
+                const currentMessage = this.messages.shift();
+                this.currentMessage = currentMessage;
+                if (!this.currentMessage) return;
+                this.setText(this.currentMessage);
+                this.currentMessage.timeShown = Date.now();
+            }
         }
     }
 }
@@ -52,18 +93,22 @@ class StatusBarMessage {
     message: string;
     timeout: number;
     force: boolean;
+    timeShown: number;
+    kek_mode: boolean;
 
     messageAge = function () {
-        return Date.now() - this.lastMessageTimestamp;
+        if (!this.timeShown) return 0;
+        return Date.now() - this.timeShown;
     }
 
     messageTimedOut = function () {
         return this.messageAge() >= this.timeout;
     }
 
-    constructor(message: string, timeout: number, force = false) {
+    constructor(message: string, timeout: number, force = false, kek_mode = false) {
         this.message = message;
         this.timeout = timeout;
         this.force = force;
+        this.kek_mode = kek_mode;
     }
 }

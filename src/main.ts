@@ -9,6 +9,7 @@ interface TranscriptionSettings {
 	translate: boolean;
 	verbosity: number;
 	whisperASRUrl: string;
+	kek_mode: boolean;
 	debug: boolean;
 	dev: boolean;
 	scribeToken: string;
@@ -21,6 +22,7 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 	translate: false,
 	verbosity: 1,
 	whisperASRUrl: 'http://localhost:9000',
+	kek_mode: false,
 	debug: false,
 	dev: false,
 	scribeToken: '',
@@ -195,6 +197,17 @@ class TranscriptionSettingTab extends PluginSettingTab {
 			.setName('Scribe Settings')
 			.setClass('scribe-settings')
 			.setHeading()
+
+		new Setting(containerEl)
+			.setName('Kek mode')
+			.setDesc('Enable kek mode')
+			.setClass('scribe-settings')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.kek_mode)
+				.onChange(async (value) => {
+					this.plugin.settings.kek_mode = value;
+					await this.plugin.saveSettings();
+				}));
 
 		new Setting(containerEl)
 			.setName('Enable translation')
