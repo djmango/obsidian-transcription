@@ -12,6 +12,9 @@ if [[ ! -f "./.github/workflows/release.yml" ]] ; then
 	return
 fi
 
+echo "Building release for $repoURL.."
+npm run build
+
 # get version number from the manifest of the latest release
 # repoURL=$(git remote -v | grep git@github.com | grep fetch | head -n1 | cut -f2 | cut -d' ' -f1 | sed -e's/:/\//' -e 's/git@/https:\/\//' -e 's/\.git//' )
 # Maybe make this regex to fix it?

@@ -1,4 +1,4 @@
-name: Build Obsidian Plugin
+name: Build Obsidian Transcription Plugin & Create Official Release
 
 on:
   push:
@@ -10,7 +10,7 @@ env:
   PLUGIN_NAME: obsidian-transcription
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
 
     steps:

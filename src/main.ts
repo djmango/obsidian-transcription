@@ -1,19 +1,32 @@
 import { ChildProcess } from 'child_process';
-import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TFile, Notice } from 'obsidian';
+import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TFile, Notice, Platform } from 'obsidian';
 import { TranscriptionEngine } from 'src/transcribe';
+import { StatusBar } from './status';
 
 interface TranscriptionSettings {
 	timestamps: boolean;
-	transcribeFileExtensions: string;
+	timestampFormat: string;
+	translate: boolean;
+	verbosity: number;
 	whisperASRUrl: string;
+	kek_mode: boolean;
 	debug: boolean;
+	dev: boolean;
+	scribeToken: string;
+	transcription_engine: string
 }
 
 const DEFAULT_SETTINGS: TranscriptionSettings = {
 	timestamps: false,
-	transcribeFileExtensions: 'mp3,wav,webm',
+	timestampFormat: 'HH:mm:ss',
+	translate: false,
+	verbosity: 1,
 	whisperASRUrl: 'http://localhost:9000',
-	debug: false
+	kek_mode: false,
+	debug: false,
+	dev: false,
+	scribeToken: '',
+	transcription_engine: 'Scribe'
 }
 
 export default class Transcription extends Plugin {
@@ -21,13 +34,23 @@ export default class Transcription extends Plugin {
 	settings: TranscriptionSettings;
 	public static plugin: Plugin;
 	public static children: Array<ChildProcess> = [];
+	private static transcribeFileExtensions: string[] = ['mp3', 'wav', 'webm', 'ogg', 'flac', 'm4a', 'aac', 'amr', 'opus', 'aiff', 'm3gp', 'mp4', 'm4v', 'mov', 'avi', 'wmv', 'flv', 'mpeg', 'mpg', 'mkv']
 	public transcription_engine: TranscriptionEngine;
+	statusBar: StatusBar;
 
 	async onload() {
 		await this.loadSettings();
 		Transcription.plugin = this;
-		if (this.settings.debug) console.log('Loading Obsidian Transcription');
-		this.transcription_engine = new TranscriptionEngine(this.settings, this.app.vault, TranscriptionEngine.prototype.getTranscriptionWhisperASR)
+		console.log('Loading Obsidian Transcription');
+
+		if (!Platform.isMobileApp) {
+			this.statusBar = new StatusBar(this.addStatusBarItem());
+			this.registerInterval(
+				window.setInterval(() => this.statusBar.display(), 1000)
+			);
+		}
+
+		this.transcription_engine = new TranscriptionEngine(this.settings, this.app.vault, this.statusBar);
 
 		this.addCommand({
 			id: 'obsidian-transcription-transcribe-all-in-view',
@@ -45,7 +68,7 @@ export default class Transcription extends Plugin {
 				const filesToTranscribe: TFile[] = [];
 				for (const linkedFilePath of filesLinked) {
 					const linkedFileExtension = linkedFilePath.split('.').pop();
-					if (linkedFileExtension === undefined || !this.settings.transcribeFileExtensions.split(',').includes(linkedFileExtension)) {
+					if (linkedFileExtension === undefined || !Transcription.transcribeFileExtensions.includes(linkedFileExtension.toLowerCase())) {
 						if (this.settings.debug) console.log('Skipping ' + linkedFilePath + ' because the file extension is not in the list of transcribeable file extensions');
 						continue;
 					}
@@ -67,9 +90,7 @@ export default class Transcription extends Plugin {
 					if (this.settings.debug) console.log('Transcribing ' + fileToTranscribe.path);
 
 					this.transcription_engine.getTranscription(fileToTranscribe).then(async (transcription) => {
-						if (this.settings.debug) console.log(transcription);
-
-						var fileText = await this.app.vault.read(view.file)
+						let fileText = await this.app.vault.read(view.file)
 						const fileLinkString = this.app.metadataCache.fileToLinktext(fileToTranscribe, view.file.path); // This is the string that is used to link the audio file in the markdown file. If files are moved this potentially breaks, but Obsidian has built-in handlers for this, and handling that is outside the scope of this plugin
 						const fileLinkStringTagged = `[[${fileLinkString}]]`; // This is the string that is used to link the audio file in the markdown file.
 						console.log(fileLinkString)
@@ -80,10 +101,11 @@ export default class Transcription extends Plugin {
 						fileText = [fileText.slice(0, startReplacementIndex), `\n${transcription}`, fileText.slice(startReplacementIndex)].join('');
 
 						// Now that we have the file lines with the transcription, we can write the file
-						await this.app.vault.modify(view.file, fileText); 
+						await this.app.vault.modify(view.file, fileText);
 
 					}).catch((error) => {
 						if (this.settings.debug) new Notice('Error transcribing file ' + fileToTranscribe.name + ': ' + error);
+						else if (this.settings.dev) throw error;
 						else new Notice('Error transcribing file, enable debug mode to see more');
 					});
 				}
@@ -130,8 +152,78 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		containerEl.createEl('h2', { text: 'Settings for Obsidian Transcription' });
 
 		new Setting(containerEl)
+			.setName('General Settings')
+			.setHeading()
+
+		new Setting(containerEl)
+			.setName('Transcription engine')
+			.setDesc('The transcription engine to use')
+			.setTooltip('Scribe is a cloud based transcription engine offered by GambitEngine (no set up, mobile friendly). Whisper ASR is a self-hosted local transcription engine that uses the Whisper ASR python app. (requires separate set up, not mobile friendly)')
+			.setClass('transcription-engine-setting')
+			.addDropdown(dropdown => dropdown
+				.addOption('scribe', 'Scribe')
+				.addOption('whisper_asr', 'Whisper ASR')
+				.setValue(this.plugin.settings.transcription_engine)
+				.onChange(async (value) => {
+					this.plugin.settings.transcription_engine = value;
+					await this.plugin.saveSettings();
+					// Hide the settings for the other transcription engine
+					if (value == 'scribe') {
+						containerEl.findAll('.scribe-settings').forEach((element) => { element.style.display = 'block'; });
+						containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'none'; });
+					}
+					else if (value == 'whisper_asr') {
+						containerEl.findAll('.scribe-settings').forEach((element) => { element.style.display = 'none'; });
+						containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'block'; });
+					}
+				}));
+
+		new Setting(containerEl)
+			.setName('Notice verbosity')
+			.setDesc('How granularly notices should be displayed')
+			.setTooltip('Verbose will display a notice for every event in the backend. Normal will display a notice for every major event, such as successful transcription or file upload. Silent will not display any notices.')
+			.addDropdown(dropdown => dropdown
+				.addOption('0', 'Silent')
+				.addOption('1', 'Normal')
+				.addOption('2', 'Verbose')
+				.setValue(this.plugin.settings.verbosity.toString())
+				.onChange(async (value) => {
+					this.plugin.settings.verbosity = parseInt(value);
+					await this.plugin.saveSettings();
+				}));
+
+
+		new Setting(containerEl)
+			.setName('Scribe Settings')
+			.setClass('scribe-settings')
+			.setHeading()
+
+		new Setting(containerEl)
+			.setName('Kek mode')
+			.setDesc('Enable kek mode')
+			.setClass('scribe-settings')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.kek_mode)
+				.onChange(async (value) => {
+					this.plugin.settings.kek_mode = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Enable translation')
+			.setDesc('Translate the transcription from any language to English')
+			.setClass('scribe-settings')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.translate)
+				.onChange(async (value) => {
+					this.plugin.settings.translate = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
 			.setName('Enable timestamps')
 			.setDesc('Add timestamps to the beginning of each line')
+			.setClass('scribe-settings')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.timestamps)
 				.onChange(async (value) => {
@@ -140,8 +232,41 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setName('Timestamp format')
+			.setDesc('The format of the timestamps: date-fns.org/docs/format')
+			.setClass('scribe-settings')
+			.addDropdown(dropdown => dropdown
+				.addOption('HH:mm:ss', 'HH:mm:ss')
+				.addOption('mm:ss', 'mm:ss')
+				.addOption('ss', 'ss')
+				.setValue(this.plugin.settings.timestampFormat)
+				.onChange(async (value) => {
+					// Validate with regex that we have a valid date-fns format
+					this.plugin.settings.timestampFormat = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Scribe Token')
+			.setDesc('The token used to authenticate with the Scribe API. Get one at scribe.gambitengine.com')
+			.setClass('scribe-settings')
+			.addText(text => text
+				.setPlaceholder(DEFAULT_SETTINGS.scribeToken)
+				.setValue(this.plugin.settings.scribeToken)
+				.onChange(async (value) => {
+					this.plugin.settings.scribeToken = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Whisper ASR Settings')
+			.setClass('whisper-asr-settings')
+			.setHeading()
+
+		new Setting(containerEl)
 			.setName('Whisper ASR URL')
 			.setDesc('The URL of the Whisper ASR server: https://github.com/ahmetoner/whisper-asr-webservice')
+			.setClass('whisper-asr-settings')
 			.addText(text => text
 				.setPlaceholder(DEFAULT_SETTINGS.whisperASRUrl)
 				.setValue(this.plugin.settings.whisperASRUrl)
@@ -151,15 +276,8 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('Allowed file extensions')
-			.setDesc('Comma-separated list of file extensions to transcribe')
-			.addText(text => text
-				.setPlaceholder(DEFAULT_SETTINGS.transcribeFileExtensions)
-				.setValue(this.plugin.settings.transcribeFileExtensions)
-				.onChange(async (value) => {
-					this.plugin.settings.transcribeFileExtensions = value;
-					await this.plugin.saveSettings();
-				}));
+			.setName('Advanced Settings')
+			.setHeading()
 
 		new Setting(containerEl)
 			.setName('Debug mode')
@@ -168,8 +286,39 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.debug)
 				.onChange(async (value) => {
 					this.plugin.settings.debug = value;
+					// If this is toggled off, also turn off dev mode
+					if (!value) this.plugin.settings.dev = false;
 					await this.plugin.saveSettings();
 				}));
+
+		new Setting(containerEl)
+			.setName('Dev mode')
+			.setDesc('Enable dev mode to use the dev version of the plugin - only use this if you\'re a beta tester or developer, email sulaiman@gambitengine.com for more info')
+			.setClass('dev-mode')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.dev)
+				.onChange(async (value) => {
+					this.plugin.settings.dev = value;
+					await this.plugin.saveSettings();
+				}));
+
+		// Initially hide the settings for the other transcription engine
+		if (this.plugin.settings.transcription_engine == 'scribe') {
+			containerEl.findAll('.scribe-settings').forEach((element) => { element.style.display = 'block'; });
+			containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'none'; });
+		}
+		else if (this.plugin.settings.transcription_engine == 'whisper_asr') {
+			containerEl.findAll('.scribe-settings').forEach((element) => { element.style.display = 'none'; });
+			containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'block'; });
+		}
+
+		// If debug mode is off, hide the dev mode setting
+		if (!this.plugin.settings.debug) {
+			containerEl.findAll('.dev-mode').forEach((element) => { element.style.display = 'none'; });
+		}
+		else {
+			containerEl.findAll('.dev-mode').forEach((element) => { element.style.display = 'block'; });
+		}
 	}
 }
 

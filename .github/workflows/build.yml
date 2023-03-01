@@ -1,0 +1,43 @@
+name: Build Obsidian Transcription Dev
+# Thanks @ClareMacrae!
+
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: [master]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      - name: Install modules
+        run: yarn
+
+      - name: Run build
+        run: yarn run build
+
+      - name: Run TypeScript compiler ESLint
+        run: yarn run lint
+
+      - name: Archive verified build
+        uses: actions/upload-artifact@v3
+        with:
+          name: obsidian-transcription
+          path: |
+            main.js
+            manifest.json
+            styles.css
+
+      # https://github.com/obsidian-tasks-group/obsidian-tasks/blob/7585a058e4c3f1a220a4ba8079f6897d92e52dbe/.github/workflows/verify.yml#L29-L46
+      # - name: Copy new build to Tasks-Demo vault
+      #   run: ./scripts/Test-TasksInLocalObsidian.sh
+
+      # - name: Archive Tasks-Demo vault
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: Tasks-Demo-VerifyCommit-Build${{ github.run_number }}-Run${{ github.run_attempt }}
+      #     path: |
+      #       resources/sample_vaults/Tasks-Demo
