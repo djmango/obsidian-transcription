@@ -2,7 +2,7 @@
 
 A plugin to generate high-quality transcriptions of any audio and video file via [OpenAI Whisper](https://openai.com/blog/whisper/) and [Scribe by GambitEngine](https://scribe.gambitengine.com).
 
-![Demo](images/demo.gif)
+DEMO
 
 ## Features
 
