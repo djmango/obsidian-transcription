@@ -167,7 +167,7 @@ export class TranscriptionEngine {
 
         // Poll Scribe until the transcription is complete
         let tries = 0;
-        const max_tries = 100;
+        const max_tries = 200;
         const sleep_time = 3000;
 
         let last_percent = 0;
