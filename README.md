@@ -2,7 +2,7 @@
 
 A plugin to generate high-quality transcriptions of any audio and video file via [OpenAI Whisper](https://openai.com/blog/whisper/) and [Scribe by GambitEngine](https://scribe.gambitengine.com).
 
-DEMO
+https://user-images.githubusercontent.com/28496988/222249728-73ff6967-681c-487f-ab68-56d454e4d3b4.mp4
 
 ## Features
 
@@ -17,6 +17,10 @@ DEMO
 1. Install the plugin
 2. Set up [Whisper ASR](https://github.com/ahmetoner/whisper-asr-webservice) or [GambitEngine Scribe](https://scribe.gambitengine.com/)
 3. If not hosting locally, configure the URL of the transcription engine in the settings
+
+## Contact
+
+Contact me by email at sulaiman@gambitengine.com or on Twitter [@sulaimanghori](https://twitter.com/sulaimanghori) if you have any ideas, frustrations, or suggestions!
 
 ## Credits
 
