@@ -1,4 +1,9 @@
-# Obsidian Transcription
+# Obsidian Transcription 2.0
+
+We're excited to announce the launch of Scribe - Obsidian Transcription 2.0! This highly advanced speech-to-text transcription service is the latest offering from GambitEngine, our AI product design lab that's dedicated to making AI work better for people and businesses. With customizable formatting options, high-quality transcription, and secure data storage, Scribe - Obsidian Transcription 2.0 is designed to meet the needs of any business that requires accurate and reliable speech-to-text transcription. We're excited to invite you to try out Scribe and experience the power of AI to transform the way you work and communicate.
+
+https://gambitengine.com/
+https://scribe.gambitengine.com/
 
 A plugin to generate high-quality transcriptions of any audio and video file via [OpenAI Whisper](https://openai.com/blog/whisper/) and [Scribe by GambitEngine](https://scribe.gambitengine.com).
 
