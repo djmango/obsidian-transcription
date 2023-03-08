@@ -1,13 +1,12 @@
-# Obsidian Transcription 2.0
-
-We're excited to announce the launch of Scribe - Obsidian Transcription 2.0! This highly advanced speech-to-text transcription service is the latest offering from GambitEngine, our AI product design lab that's dedicated to making AI work better for people and businesses. With customizable formatting options, high-quality transcription, and secure data storage, Scribe - Obsidian Transcription 2.0 is designed to meet the needs of any business that requires accurate and reliable speech-to-text transcription. We're excited to invite you to try out Scribe and experience the power of AI to transform the way you work and communicate.
-
-https://gambitengine.com/
-https://scribe.gambitengine.com/
+# Obsidian Transcription
 
 A plugin to generate high-quality transcriptions of any audio and video file via [OpenAI Whisper](https://openai.com/blog/whisper/) and [Scribe by GambitEngine](https://scribe.gambitengine.com).
 
-https://user-images.githubusercontent.com/28496988/222249728-73ff6967-681c-487f-ab68-56d454e4d3b4.mp4
+## Launch of Scribe
+
+We're excited to announce the launch of [Scribe](https://scribe.gambitengine.com), now powering this plugin! This highly advanced speech-to-text transcription service based on OpenAI's Whisper is the latest offering from GambitEngine, our product design lab that's dedicated to making AI work better for people and businesses. With customizable formatting options, high-quality transcription, and blazing fast speed, Scribe is designed to meet the needs of any business that requires accurate and reliable speech-to-text transcription.
+
+![Demo](media/demo.gif)
 
 ## Features
 
@@ -20,12 +19,13 @@ https://user-images.githubusercontent.com/28496988/222249728-73ff6967-681c-487f-
 ## How to use
 
 1. Install the plugin
-2. Set up [Whisper ASR](https://github.com/ahmetoner/whisper-asr-webservice) or [GambitEngine Scribe](https://scribe.gambitengine.com/)
-3. If not hosting locally, configure the URL of the transcription engine in the settings
+2. Sign up for an account with [GambitEngine Scribe](https://scribe.gambitengine.com/)
+3. Copy the API key from the dashboard, and paste it into the settings of the plugin
+4. Transcribe any audio or video file!
 
 ## Contact
 
-Contact me by email at sulaiman@gambitengine.com or on Twitter [@sulaimanghori](https://twitter.com/sulaimanghori) if you have any ideas, frustrations, or suggestions!
+Contact me by email at sulaiman@gambitengine.com or on Twitter [@sulaimanghori](https://twitter.com/sulaimanghori) if you have any comments, issues, or suggestions!
 
 ## Credits
 
