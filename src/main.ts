@@ -26,7 +26,7 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 	debug: false,
 	dev: false,
 	scribeToken: '',
-	transcription_engine: 'Scribe'
+	transcription_engine: 'scribe'
 }
 
 export default class Transcription extends Plugin {
@@ -51,6 +51,30 @@ export default class Transcription extends Plugin {
 		}
 
 		this.transcription_engine = new TranscriptionEngine(this.settings, this.app.vault, this.statusBar);
+		const transcribeAndWrite = async (parent_file: TFile, file: TFile) => {
+			if (this.settings.debug) console.log('Transcribing ' + file.path);
+			// Check if view has file
+
+			this.transcription_engine.getTranscription(file).then(async (transcription) => {
+				let fileText = await this.app.vault.read(parent_file)
+				const fileLinkString = this.app.metadataCache.fileToLinktext(file, parent_file.path); // This is the string that is used to link the audio file in the markdown file. If files are moved this potentially breaks, but Obsidian has built-in handlers for this, and handling that is outside the scope of this plugin
+				const fileLinkStringTagged = `[[${fileLinkString}]]`; // This is the string that is used to link the audio file in the markdown file.
+				console.log(fileLinkString)
+
+				// Perform a string replacement, add the transcription to the next line after the file link
+				const startReplacementIndex = fileText.indexOf(fileLinkStringTagged) + fileLinkStringTagged.length;
+				// fileText = [fileText.slice(0, startReplacementIndex), `\n\`\`\`${transcription}\`\`\``, fileText.slice(startReplacementIndex)].join('');
+				fileText = [fileText.slice(0, startReplacementIndex), `\n${transcription}`, fileText.slice(startReplacementIndex)].join('');
+
+				// Now that we have the file lines with the transcription, we can write the file
+				await this.app.vault.modify(parent_file, fileText);
+
+			}).catch((error) => {
+				if (this.settings.debug) new Notice('Error transcribing file ' + file.name + ': ' + error);
+				else if (this.settings.dev) throw error;
+				else new Notice('Error transcribing file, enable debug mode to see more');
+			});
+		}
 
 		this.addCommand({
 			id: 'obsidian-transcription-transcribe-all-in-view',
@@ -87,30 +111,32 @@ export default class Transcription extends Plugin {
 
 				// Now that we have all the files to transcribe, we can transcribe them
 				for (const fileToTranscribe of filesToTranscribe) {
-					if (this.settings.debug) console.log('Transcribing ' + fileToTranscribe.path);
-
-					this.transcription_engine.getTranscription(fileToTranscribe).then(async (transcription) => {
-						let fileText = await this.app.vault.read(view.file)
-						const fileLinkString = this.app.metadataCache.fileToLinktext(fileToTranscribe, view.file.path); // This is the string that is used to link the audio file in the markdown file. If files are moved this potentially breaks, but Obsidian has built-in handlers for this, and handling that is outside the scope of this plugin
-						const fileLinkStringTagged = `[[${fileLinkString}]]`; // This is the string that is used to link the audio file in the markdown file.
-						console.log(fileLinkString)
-
-						// Perform a string replacement, add the transcription to the next line after the file link
-						const startReplacementIndex = fileText.indexOf(fileLinkStringTagged) + fileLinkStringTagged.length;
-						// fileText = [fileText.slice(0, startReplacementIndex), `\n\`\`\`${transcription}\`\`\``, fileText.slice(startReplacementIndex)].join('');
-						fileText = [fileText.slice(0, startReplacementIndex), `\n${transcription}`, fileText.slice(startReplacementIndex)].join('');
-
-						// Now that we have the file lines with the transcription, we can write the file
-						await this.app.vault.modify(view.file, fileText);
-
-					}).catch((error) => {
-						if (this.settings.debug) new Notice('Error transcribing file ' + fileToTranscribe.name + ': ' + error);
-						else if (this.settings.dev) throw error;
-						else new Notice('Error transcribing file, enable debug mode to see more');
-					});
+					transcribeAndWrite(view.file, fileToTranscribe);
 				}
 			}
 		});
+
+
+		// Register a command to transcribe a media file when right-clicking on it
+		// this.registerEvent(
+		// 	// if (!Transcription.transcribeFileExtensions.includes(view.file.extension.toLowerCase())) return;
+		// 	this.app.workspace.on("file-menu", (menu: Menu, file) => {
+		// 		if (file instanceof TFolder) return;
+		// 		// if (file.parent instanceof TFolder) return;
+		// 		if (!(file instanceof TFile)) return;
+		// 		console.log(file)
+		// 		menu.addItem((item) => {
+		// 			item
+		// 				.setTitle("Transcribe File 🖊️")
+		// 				.setIcon("document")
+		// 				.onClick(async () => {
+		// 					if (!Transcription.transcribeFileExtensions.includes(file.extension.toLowerCase())) return;
+		// 					// transcribeAndWrite(file.parent, file)
+		// 					new Notice(file.path);
+		// 				});
+		// 		});
+		// 	})
+		// );
 
 		// Kill child processes when the plugin is unloaded
 		this.app.workspace.on("quit", () => {
@@ -199,17 +225,6 @@ class TranscriptionSettingTab extends PluginSettingTab {
 			.setHeading()
 
 		new Setting(containerEl)
-			.setName('Kek mode')
-			.setDesc('Enable kek mode')
-			.setClass('scribe-settings')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.kek_mode)
-				.onChange(async (value) => {
-					this.plugin.settings.kek_mode = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
 			.setName('Enable translation')
 			.setDesc('Translate the transcription from any language to English')
 			.setClass('scribe-settings')
@@ -256,7 +271,21 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.scribeToken = value;
 					await this.plugin.saveSettings();
+				}).then((element) => {
+					element.inputEl.type = 'password';
 				}));
+
+		new Setting(containerEl)
+			.setName('Kek mode')
+			.setDesc('Enable kek mode')
+			.setClass('scribe-settings')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.kek_mode)
+				.onChange(async (value) => {
+					this.plugin.settings.kek_mode = value;
+					await this.plugin.saveSettings();
+				}));
+
 
 		new Setting(containerEl)
 			.setName('Whisper ASR Settings')
