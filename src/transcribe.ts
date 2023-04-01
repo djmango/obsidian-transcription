@@ -72,10 +72,10 @@ export class TranscriptionEngine {
         const payload_data: PayloadData = {}
         payload_data['audio_file'] = new Blob([await this.vault.readBinary(file)]);
         const [request_body, boundary_string] = await payloadGenerator(payload_data);
-
+        
         const options: RequestUrlParam = {
             method: 'POST',
-            url: `${this.settings.whisperASRUrl}/asr?task=transcribe&language=en`,
+            url: `${this.settings.whisperASRUrl}/asr?task=transcribe&language=en&output=json`,
             contentType: `multipart/form-data; boundary=----${boundary_string}`,
             body: request_body
         };
@@ -84,9 +84,9 @@ export class TranscriptionEngine {
             if (this.settings.debug) console.log(response);
             // WhisperASR returns a JSON object with a text field containing the transcription and segments field
 
-            // Pull transcription from either response.text or response.json.text
-            if (typeof response.text === 'string') return response.text;
-            else return response.json.text;
+            // Pull transcription response.json.text
+            if (this.settings.timestamps) return this.segmentsToTimestampedString(response.json.segments, this.settings.timestampFormat);
+            return response.json.text;
 
         }).catch((error) => {
             if (this.settings.debug) console.error(error);
