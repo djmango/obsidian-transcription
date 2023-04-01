@@ -217,7 +217,30 @@ class TranscriptionSettingTab extends PluginSettingTab {
 					this.plugin.settings.verbosity = parseInt(value);
 					await this.plugin.saveSettings();
 				}));
+    
+		new Setting(containerEl)
+			.setName('Enable timestamps')
+			.setDesc('Add timestamps to the beginning of each line')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.timestamps)
+				.onChange(async (value) => {
+					this.plugin.settings.timestamps = value;
+					await this.plugin.saveSettings();
+				}));
 
+		new Setting(containerEl)
+			.setName('Timestamp format')
+			.setDesc('The format of the timestamps: date-fns.org/docs/format')
+			.addDropdown(dropdown => dropdown
+				.addOption('HH:mm:ss', 'HH:mm:ss')
+				.addOption('mm:ss', 'mm:ss')
+				.addOption('ss', 'ss')
+				.setValue(this.plugin.settings.timestampFormat)
+				.onChange(async (value) => {
+					// Validate with regex that we have a valid date-fns format
+					this.plugin.settings.timestampFormat = value;
+					await this.plugin.saveSettings();
+				}));
 
 		new Setting(containerEl)
 			.setName('Scribe Settings')
@@ -232,32 +255,6 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.translate)
 				.onChange(async (value) => {
 					this.plugin.settings.translate = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName('Enable timestamps')
-			.setDesc('Add timestamps to the beginning of each line')
-			.setClass('scribe-settings')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.timestamps)
-				.onChange(async (value) => {
-					this.plugin.settings.timestamps = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName('Timestamp format')
-			.setDesc('The format of the timestamps: date-fns.org/docs/format')
-			.setClass('scribe-settings')
-			.addDropdown(dropdown => dropdown
-				.addOption('HH:mm:ss', 'HH:mm:ss')
-				.addOption('mm:ss', 'mm:ss')
-				.addOption('ss', 'ss')
-				.setValue(this.plugin.settings.timestampFormat)
-				.onChange(async (value) => {
-					// Validate with regex that we have a valid date-fns format
-					this.plugin.settings.timestampFormat = value;
 					await this.plugin.saveSettings();
 				}));
 
