@@ -6,7 +6,10 @@
 
 export interface paths {
   "/hello/": {
-    /** Hello */
+    /**
+     * Hello 
+     * @description Says hello and returns the user_id if the user is logged in
+     */
     get: operations["hello_hello__get"];
   };
   "/v1/users/": {
@@ -21,12 +24,24 @@ export interface paths {
      */
     post: operations["create_user_v1_users__post"];
   };
+  "/v1/users/me": {
+    /**
+     * Get the current user 
+     * @description This endpoint will return the current user
+     */
+    get: operations["get_me_v1_users_me_get"];
+  };
   "/v1/users/{user_id}": {
     /**
      * Get User 
      * @description This endpoint will take a user id and return the user.
      */
     get: operations["get_user_v1_users__user_id__get"];
+    /**
+     * Delete User 
+     * @description This endpoint will take a user id and delete the user.
+     */
+    delete: operations["delete_user_v1_users__user_id__delete"];
   };
   "/v1/api_keys/": {
     /**
@@ -162,6 +177,14 @@ export interface paths {
      */
     get: operations["get_transcription_v1_scribe_transcriptions__transcription_id__get"];
   };
+  "/v1/scribe/transcriptions/{transcription_id}/headings": {
+    /** Create Transcription Headings */
+    post: operations["create_transcription_headings_v1_scribe_transcriptions__transcription_id__headings_post"];
+  };
+  "/v1/scribe/transcriptions/{transcription_id}/summary": {
+    /** Create Transcription Summary */
+    post: operations["create_transcription_summary_v1_scribe_transcriptions__transcription_id__summary_post"];
+  };
   "/aws/s3": {
     /** S3 Event Handler */
     put: operations["s3_event_handler_aws_s3_put"];
@@ -235,6 +258,14 @@ export interface components {
     /** CreateTranscriptionRequest */
     CreateTranscriptionRequest: {
       /**
+       * Name 
+       * @description The name of the transcription 
+       * @example David Attenborough - Planet Earth II - Episode 1 - The Beasts of the Southern Wild
+       */
+      name?: string;
+      /** @description Recipients of the transcription */
+      recipients?: (components["schemas"]["TranscriptionRecipients"])[];
+      /**
        * Url 
        * Format: uri 
        * @description The url of the audio file to be transcribed. If this is not provided, the audio file must be uploaded via the S3 presigned url 
@@ -252,6 +283,11 @@ export interface components {
        * @example fa
        */
       language?: components["schemas"]["TranscriptionLanguage"];
+      /**
+       * Webhooks 
+       * @description Webhooks to be called to update on the status of the transcription
+       */
+      webhooks?: (components["schemas"]["Webhook"])[];
     };
     /** CreateTranscriptionResponse */
     CreateTranscriptionResponse: {
@@ -535,6 +571,54 @@ export interface components {
        */
       deleted?: boolean;
     };
+    /** TimestampedTextSegment */
+    TimestampedTextSegment: {
+      /**
+       * Start 
+       * @description Start time of the segment in seconds 
+       * @example 0
+       */
+      start: number;
+      /**
+       * End 
+       * @description End time of the segment in seconds 
+       * @example 1
+       */
+      end: number;
+      /**
+       * Text 
+       * @description Text of the segment 
+       * @example Hello World
+       */
+      text: string;
+    };
+    /** TimestampedTextSegmentIndexed */
+    TimestampedTextSegmentIndexed: {
+      /**
+       * Start 
+       * @description Start time of the segment in seconds 
+       * @example 0
+       */
+      start: number;
+      /**
+       * End 
+       * @description End time of the segment in seconds 
+       * @example 1
+       */
+      end: number;
+      /**
+       * Text 
+       * @description Text of the segment 
+       * @example Hello World
+       */
+      text: string;
+      /**
+       * Index 
+       * @description The index of the block 
+       * @example 1
+       */
+      index: number;
+    };
     /**
      * Transcription 
      * @description Transcription Model
@@ -563,6 +647,12 @@ export interface components {
        */
       updated?: string;
       /**
+       * Name 
+       * @description Name of the transcription 
+       * @default
+       */
+      name?: string;
+      /**
        * @description Current status of the transcription 
        * @default pending
        */
@@ -585,6 +675,18 @@ export interface components {
        * @example File is not a valid audio or video file
        */
       error_message?: string;
+      /**
+       * @description Recipients of the transcription 
+       * @default [
+       *   "all"
+       * ]
+       */
+      recipients?: (components["schemas"]["TranscriptionRecipients"])[];
+      /**
+       * Webhooks 
+       * @description Webhook URLs to send transcription to, along with the params
+       */
+      webhooks?: (components["schemas"]["Webhook"])[];
       /**
        * File Ffprobe 
        * @description FFProbe output for the file
@@ -645,9 +747,9 @@ export interface components {
       transcription_backend?: components["schemas"]["TranscriptionInferenceBackend"];
       /**
        * Progress 
-       * @description Progress of the transcription (0.0 - 1.0) 
+       * @description Progress of the transcription (0 - 100) 
        * @default 0 
-       * @example 0.5
+       * @example 50
        */
       progress?: number;
       /**
@@ -656,23 +758,34 @@ export interface components {
        */
       language?: components["schemas"]["TranscriptionLanguage"];
       /**
-       * Result 
+       * Text Segments 
        * @description Timestamped & processed transcription result from the model
        */
-      result?: (components["schemas"]["TranscriptionResultSegment"])[];
+      text_segments?: (components["schemas"]["TimestampedTextSegment"])[];
       /**
        * Text 
        * @description Transcription text 
        * @example Hello world
        */
       text?: string;
+      /**
+       * Heading Segments 
+       * @description Timestamped & processed transcription result from the model
+       */
+      heading_segments?: (components["schemas"]["TimestampedTextSegment"])[];
+      /**
+       * Summary 
+       * @description Transcription summary 
+       * @example In this document, someone said Hello World.
+       */
+      summary?: string;
     };
     /**
      * TranscriptionInferenceBackend 
      * @description An enumeration. 
      * @enum {unknown}
      */
-    TranscriptionInferenceBackend: "huggingface" | "replicate";
+    TranscriptionInferenceBackend: "huggingface" | "replicate" | "openai";
     /**
      * TranscriptionInferenceModel 
      * @description An enumeration. 
@@ -685,30 +798,18 @@ export interface components {
      * @enum {unknown}
      */
     TranscriptionLanguage: "af" | "am" | "ar" | "as" | "az" | "ba" | "be" | "bg" | "bn" | "bo" | "br" | "bs" | "ca" | "cs" | "cy" | "da" | "de" | "el" | "en" | "es" | "et" | "eu" | "fa" | "fi" | "fo" | "fr" | "gl" | "gu" | "ha" | "haw" | "hi" | "hr" | "ht" | "hu" | "hy" | "id" | "is" | "it" | "iw" | "ja" | "jw" | "ka" | "kk" | "km" | "kn" | "ko" | "la" | "lb" | "ln" | "lo" | "lt" | "lv" | "mg" | "mi" | "mk" | "ml" | "mn" | "mr" | "ms" | "mt" | "my" | "ne" | "nl" | "nn" | "no" | "oc" | "pa" | "pl" | "ps" | "pt" | "ro" | "ru" | "sa" | "sd" | "si" | "sk" | "sl" | "sn" | "so" | "sq" | "sr" | "su" | "sv" | "sw" | "ta" | "te" | "tg" | "th" | "tk" | "tl" | "tr" | "tt" | "uk" | "ur" | "uz" | "vi" | "yi" | "yo" | "zh";
-    /** TranscriptionResultSegment */
-    TranscriptionResultSegment: {
-      /**
-       * Start 
-       * @description Start time of the segment (seconds)
-       */
-      start: number;
-      /**
-       * End 
-       * @description End time of the segment (seconds)
-       */
-      end: number;
-      /**
-       * Text 
-       * @description Text of the segment
-       */
-      text: string;
-    };
+    /**
+     * TranscriptionRecipients 
+     * @description An enumeration. 
+     * @enum {unknown}
+     */
+    TranscriptionRecipients: "all" | "email" | "simplify";
     /**
      * TranscriptionStatus 
      * @description An enumeration. 
      * @enum {unknown}
      */
-    TranscriptionStatus: "pending" | "uploaded" | "validating" | "validated" | "transcribing" | "complete" | "validation_failed" | "failed";
+    TranscriptionStatus: "pending" | "uploaded" | "validating" | "validated" | "transcribing" | "transcribed" | "complete" | "validation_failed" | "failed";
     /** UpdateFrameRequest */
     UpdateFrameRequest: {
       /**
@@ -757,11 +858,11 @@ export interface components {
        */
       user_id?: string;
       /**
-       * Full Name 
+       * Name 
        * @description The user's full name 
        * @default Joe Schmoe
        */
-      full_name?: string;
+      name?: string;
       /**
        * Email 
        * Format: email 
@@ -794,6 +895,14 @@ export interface components {
       /** Error Type */
       type: string;
     };
+    /** Webhook */
+    Webhook: {
+      /**
+       * Url 
+       * @description The URL to send the webhook to
+       */
+      url: string;
+    };
   };
   responses: never;
   parameters: never;
@@ -807,7 +916,10 @@ export type external = Record<string, never>;
 export interface operations {
 
   hello_hello__get: {
-    /** Hello */
+    /**
+     * Hello 
+     * @description Says hello and returns the user_id if the user is logged in
+     */
     responses: {
       /** @description Successful Response */
       200: {
@@ -843,6 +955,45 @@ export interface operations {
     };
     responses: {
       /** @description Successful Response */
+      201: {
+        content: {
+          "application/json": components["schemas"]["User"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_me_v1_users_me_get: {
+    /**
+     * Get the current user 
+     * @description This endpoint will return the current user
+     */
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["User"];
+        };
+      };
+    };
+  };
+  get_user_v1_users__user_id__get: {
+    /**
+     * Get User 
+     * @description This endpoint will take a user id and return the user.
+     */
+    parameters: {
+      path: {
+        user_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
       200: {
         content: {
           "application/json": components["schemas"]["User"];
@@ -856,10 +1007,10 @@ export interface operations {
       };
     };
   };
-  get_user_v1_users__user_id__get: {
+  delete_user_v1_users__user_id__delete: {
     /**
-     * Get User 
-     * @description This endpoint will take a user id and return the user.
+     * Delete User 
+     * @description This endpoint will take a user id and delete the user.
      */
     parameters: {
       path: {
@@ -970,7 +1121,7 @@ export interface operations {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["APIKey"];
         };
       };
       /** @description Validation Error */
@@ -1436,6 +1587,56 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["Transcription"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_transcription_headings_v1_scribe_transcriptions__transcription_id__headings_post: {
+    /** Create Transcription Headings */
+    parameters: {
+      query?: {
+        regenerate?: boolean;
+      };
+      path: {
+        transcription_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": (components["schemas"]["TimestampedTextSegmentIndexed"])[];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_transcription_summary_v1_scribe_transcriptions__transcription_id__summary_post: {
+    /** Create Transcription Summary */
+    parameters: {
+      query?: {
+        regenerate?: boolean;
+      };
+      path: {
+        transcription_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": string;
         };
       };
       /** @description Validation Error */

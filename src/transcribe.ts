@@ -27,7 +27,7 @@ export class TranscriptionEngine {
         this.status_bar = statusBar;
     }
 
-    segmentsToTimestampedString(segments: components['schemas']['TranscriptionResultSegment'][], timestampFormat: string): string {
+    segmentsToTimestampedString(segments: components['schemas']['TimestampedTextSegment'][], timestampFormat: string): string {
         let transcription = '';
         for (const segment of segments) {
             // Start and end are second floats with 2 decimal places
@@ -192,18 +192,19 @@ export class TranscriptionEngine {
             }
 
             // If the transcription is complete, return the transcription text
-            if (transcription.status == 'complete' &&
-                transcription.text !== undefined &&
-                transcription.result !== undefined) {
-                // Idk how asserts work in JS, but this should be an assert
-
+            if (transcription.status == 'transcribed') { // We can also wait for complete, but transcribed is good enough
                 if (this.settings.debug) console.log('Scribe finished transcribing');
                 if (this.settings.verbosity >= 1) {
                     if (this.status_bar !== null) this.status_bar.displayMessage('100% - Complete!', 3000, true);
                     else new Notice('Scribe finished transcribing', 3000)
                 }
+            
+                if (!transcription.text_segments || !transcription.text) {
+                    if (this.settings.debug) console.error('Scribe returned an invalid transcription');
+                    return Promise.reject('Scribe returned an invalid transcription');
+                }
 
-                if (this.settings.timestamps) return this.segmentsToTimestampedString(transcription.result, this.settings.timestampFormat);
+                if (this.settings.timestamps) return this.segmentsToTimestampedString(transcription.text_segments, this.settings.timestampFormat);
                 else return transcription.text;
             }
             else if (tries > max_tries) {
