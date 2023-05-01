@@ -1,6 +1,6 @@
 # Obsidian Transcription
 
-A plugin to generate high-quality transcriptions of any audio and video file via [OpenAI Whisper](https://openai.com/blog/whisper/) and [Scribe by GambitEngine](https://scribe.gambitengine.com).
+A plugin to generate high-quality transcriptions in [Obsidian](https://obsidian.md/) of any audio and video file via [OpenAI Whisper](https://openai.com/blog/whisper/) and [Scribe by GambitEngine](https://scribe.gambitengine.com).
 
 ## Launch of Scribe
 
