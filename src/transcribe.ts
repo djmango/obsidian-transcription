@@ -75,7 +75,7 @@ export class TranscriptionEngine {
         
         const options: RequestUrlParam = {
             method: 'POST',
-            url: `${this.settings.whisperASRUrl}/asr?task=transcribe&language=en&output=json`,
+            url: `${this.settings.whisperASRUrl}/asr?task=transcribe&output=json`,
             contentType: `multipart/form-data; boundary=----${boundary_string}`,
             body: request_body
         };
