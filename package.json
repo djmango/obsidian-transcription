@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-transcription",
-	"version": "2.0.0",
+	"version": "3.0.0",
 	"description": "Obsidian plugin to create high-quality text transcriptions from any media file, on any device",
 	"main": "main.js",
 	"scripts": {
@@ -13,17 +13,17 @@
 		"audio transcription",
 		"audio-to-text",
 		"audio",
-		"gambitengine",
+		"swiftink",
 		"markdown",
 		"obsidian",
 		"plugin",
 		"recognition",
-		"scribe",
 		"speech-to-text",
 		"speech",
 		"stt",
 		"transcription",
-		"whisper"
+		"whisper",
+		"domain-aware"
 	],
 	"author": "djmango",
 	"license": "MIT",

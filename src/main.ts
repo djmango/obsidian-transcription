@@ -9,10 +9,9 @@ interface TranscriptionSettings {
 	translate: boolean;
 	verbosity: number;
 	whisperASRUrl: string;
-	kek_mode: boolean;
 	debug: boolean;
 	dev: boolean;
-	scribeToken: string;
+	swiftinkToken: string;
 	transcription_engine: string
 }
 
@@ -22,11 +21,10 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 	translate: false,
 	verbosity: 1,
 	whisperASRUrl: 'http://localhost:9000',
-	kek_mode: false,
 	debug: false,
 	dev: false,
-	scribeToken: '',
-	transcription_engine: 'scribe'
+	swiftinkToken: '',
+	transcription_engine: 'swiftink'
 }
 
 export default class Transcription extends Plugin {
@@ -184,22 +182,22 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Transcription engine')
 			.setDesc('The transcription engine to use')
-			.setTooltip('Scribe is a cloud based transcription engine offered by GambitEngine (no set up, mobile friendly). Whisper ASR is a self-hosted local transcription engine that uses the Whisper ASR python app. (requires separate set up, not mobile friendly)')
+			.setTooltip('Swiftink.io is a cloud based transcription engine (no local set up, mobile friendly). Whisper ASR is a self-hosted local transcription engine that uses the Whisper ASR python app. (requires local setup)')
 			.setClass('transcription-engine-setting')
 			.addDropdown(dropdown => dropdown
-				.addOption('scribe', 'Scribe')
+				.addOption('swiftink', 'Swiftink')
 				.addOption('whisper_asr', 'Whisper ASR')
 				.setValue(this.plugin.settings.transcription_engine)
 				.onChange(async (value) => {
 					this.plugin.settings.transcription_engine = value;
 					await this.plugin.saveSettings();
 					// Hide the settings for the other transcription engine
-					if (value == 'scribe') {
-						containerEl.findAll('.scribe-settings').forEach((element) => { element.style.display = 'block'; });
+					if (value == 'swiftink') {
+						containerEl.findAll('.swiftink.settings').forEach((element) => { element.style.display = 'block'; });
 						containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'none'; });
 					}
 					else if (value == 'whisper_asr') {
-						containerEl.findAll('.scribe-settings').forEach((element) => { element.style.display = 'none'; });
+						containerEl.findAll('.swiftink.settings').forEach((element) => { element.style.display = 'none'; });
 						containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'block'; });
 					}
 				}));
@@ -220,14 +218,14 @@ class TranscriptionSettingTab extends PluginSettingTab {
 
 
 		new Setting(containerEl)
-			.setName('Scribe Settings')
-			.setClass('scribe-settings')
+			.setName('Swiftink Settings')
+			.setClass('swiftink.settings')
 			.setHeading()
 
 		new Setting(containerEl)
 			.setName('Enable translation')
 			.setDesc('Translate the transcription from any language to English')
-			.setClass('scribe-settings')
+			.setClass('swiftink.settings')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.translate)
 				.onChange(async (value) => {
@@ -238,7 +236,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Enable timestamps')
 			.setDesc('Add timestamps to the beginning of each line')
-			.setClass('scribe-settings')
+			.setClass('swiftink.settings')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.timestamps)
 				.onChange(async (value) => {
@@ -249,7 +247,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Timestamp format')
 			.setDesc('The format of the timestamps: date-fns.org/docs/format')
-			.setClass('scribe-settings')
+			.setClass('swiftink.settings')
 			.addDropdown(dropdown => dropdown
 				.addOption('HH:mm:ss', 'HH:mm:ss')
 				.addOption('mm:ss', 'mm:ss')
@@ -262,28 +260,17 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('Scribe Token')
-			.setDesc('The token used to authenticate with the Scribe API. Get one at scribe.gambitengine.com')
-			.setClass('scribe-settings')
+			.setName('Swiftink.io Token')
+			.setDesc('The token used to authenticate with the Swiftink API. Get one at swiftink.io')
+			.setClass('swiftink-settings')
 			.addText(text => text
-				.setPlaceholder(DEFAULT_SETTINGS.scribeToken)
-				.setValue(this.plugin.settings.scribeToken)
+				.setPlaceholder(DEFAULT_SETTINGS.swiftinkToken)
+				.setValue(this.plugin.settings.swiftinkToken)
 				.onChange(async (value) => {
-					this.plugin.settings.scribeToken = value;
+					this.plugin.settings.swiftinkToken = value;
 					await this.plugin.saveSettings();
 				}).then((element) => {
 					element.inputEl.type = 'password';
-				}));
-
-		new Setting(containerEl)
-			.setName('Kek mode')
-			.setDesc('Enable kek mode')
-			.setClass('scribe-settings')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.kek_mode)
-				.onChange(async (value) => {
-					this.plugin.settings.kek_mode = value;
-					await this.plugin.saveSettings();
 				}));
 
 
@@ -322,7 +309,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Dev mode')
-			.setDesc('Enable dev mode to use the dev version of the plugin - only use this if you\'re a beta tester or developer, email sulaiman@gambitengine.com for more info')
+			.setDesc('Enable dev mode to use the dev version of the plugin - only use this if you\'re a beta tester or developer, email sulaiman@swiftink.io for more info')
 			.setClass('dev-mode')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.dev)
@@ -332,12 +319,12 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				}));
 
 		// Initially hide the settings for the other transcription engine
-		if (this.plugin.settings.transcription_engine == 'scribe') {
-			containerEl.findAll('.scribe-settings').forEach((element) => { element.style.display = 'block'; });
+		if (this.plugin.settings.transcription_engine == 'swiftink') {
+			containerEl.findAll('.swiftink.settings').forEach((element) => { element.style.display = 'block'; });
 			containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'none'; });
 		}
 		else if (this.plugin.settings.transcription_engine == 'whisper_asr') {
-			containerEl.findAll('.scribe-settings').forEach((element) => { element.style.display = 'none'; });
+			containerEl.findAll('.swiftink.settings').forEach((element) => { element.style.display = 'none'; });
 			containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'block'; });
 		}
 
