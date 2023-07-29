@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-transcription",
 	"name": "Transcription",
-	"version": "3.0.0",
+	"version": "2.2.2",
 	"minAppVersion": "0.15.0",
 	"description": "NEW - Transcription 3.0, now with Swiftink.io domain-aware transcription! - Obsidian plugin to create high-quality text transcriptions from any media file, on any device",
 	"author": "djmango",
