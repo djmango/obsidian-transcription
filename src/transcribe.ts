@@ -198,8 +198,15 @@ export class TranscriptionEngine {
         // the recognizer itself
         const audioConfig = sdk.AudioConfig.fromWavFileInput(wavBuffer);
         const speechConfig = sdk.SpeechConfig.fromSubscription(subscriptionKey, serviceRegion);
-        speechConfig.speechRecognitionLanguage = this.settings.azureLang;        
-        const recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig);
+        const recognizer: sdk.SpeechRecognizer = (() => {
+            if (this.settings.azureLang === 'auto') {
+                const autoDetectLangConfig = sdk.AutoDetectSourceLanguageConfig.fromLanguages(["en-US", "uk-UA"]);
+                return sdk.SpeechRecognizer.FromConfig(speechConfig, autoDetectLangConfig, audioConfig);
+            } else {
+                speechConfig.speechRecognitionLanguage = this.settings.azureLang;        
+                return  new sdk.SpeechRecognizer(speechConfig, audioConfig);
+            }
+        })()
 
         return new Promise<string>((resolve, reject) => {
             let text = '';

@@ -336,6 +336,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 			.setName('Language')
 			.setClass('azure-settings')
 			.addDropdown(dropdown => dropdown
+				.addOption('auto', 'Automatic')
 				.addOption('en-US', 'English (US)')
 				.addOption('uk-UA', 'Ukrainian')
 				.setValue(this.plugin.settings.azureLang)
