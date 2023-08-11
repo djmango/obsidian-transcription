@@ -4,6 +4,8 @@ import { format } from "date-fns";
 import { paths, components } from "./types/swiftink";
 import { payloadGenerator, PayloadData } from "src/utils";
 import { StatusBar } from "./status";
+import * as sdk from "microsoft-cognitiveservices-speech-sdk";
+import { getWaveBlob } from "webm-to-wav-converter";
 
 // This class is the parent for transcription engines. It takes settings and a file as an input and returns a transcription as a string
 
@@ -18,7 +20,8 @@ export class TranscriptionEngine {
 
 	transcription_engines: { [key: string]: TranscriptionBackend } = {
 		"swiftink": this.getTranscriptionSwiftink,
-		"whisper_asr": this.getTranscriptionWhisperASR
+		"whisper_asr": this.getTranscriptionWhisperASR,
+        "azure_speech_service": this.getTranscriptionAzure,
 	}
 
 	constructor(settings: TranscriptionSettings, vault: Vault, statusBar: StatusBar | null) {
@@ -180,4 +183,49 @@ export class TranscriptionEngine {
 			}
 		}
 	}
+
+    async getTranscriptionAzure(file: TFile): Promise<string> {
+        const subscriptionKey = this.settings.azureKey;
+        const serviceRegion = this.settings.azureRegion; 
+
+        //Convert webm to wav
+        const webmBytes = await this.vault.readBinary(file);
+        const wavBlob = await getWaveBlob(new Blob([webmBytes]), false);
+        const wavBuffer = Buffer.from((await wavBlob.arrayBuffer()));
+
+        // now create the audio-config pointing to our buffer,
+        // the speech config specifying the language and
+        // the recognizer itself
+        const audioConfig = sdk.AudioConfig.fromWavFileInput(wavBuffer);
+        const speechConfig = sdk.SpeechConfig.fromSubscription(subscriptionKey, serviceRegion);
+        speechConfig.speechRecognitionLanguage = this.settings.azureLang;        
+        const recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig);
+
+        return new Promise<string>((resolve, reject) => {
+            let text = '';
+    
+            recognizer.recognized = (_s,e) => {
+                if (e.result.reason == sdk.ResultReason.RecognizedSpeech) {
+                    text = text + ' ' + e.result.text;
+                }
+                else if (e.result.reason == sdk.ResultReason.NoMatch) {
+                    resolve(text.trim());
+                }
+            }
+
+            recognizer.canceled = (_s, e) => {
+                if (e.reason == sdk.CancellationReason.Error) {
+                    reject(e);
+                }
+                recognizer.stopContinuousRecognitionAsync();
+            };
+            
+            recognizer.sessionStopped = (_s, _e) => {
+                resolve(text.trim());
+                recognizer.stopContinuousRecognitionAsync();
+            };
+
+            recognizer.startContinuousRecognitionAsync();
+        })
+    }
 }

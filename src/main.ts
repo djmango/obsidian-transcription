@@ -12,7 +12,10 @@ interface TranscriptionSettings {
 	debug: boolean;
 	dev: boolean;
 	swiftinkToken: string;
-	transcription_engine: string
+	transcription_engine: string;
+	azureKey: string;
+	azureRegion: string;
+	azureLang: string;
 }
 
 const DEFAULT_SETTINGS: TranscriptionSettings = {
@@ -24,7 +27,10 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 	debug: false,
 	dev: false,
 	swiftinkToken: '',
-	transcription_engine: 'swiftink'
+	transcription_engine: 'swiftink',
+	azureKey: '',
+	azureRegion: "eastus",
+	azureLang: "en-US"
 }
 
 export default class Transcription extends Plugin {
@@ -195,10 +201,17 @@ class TranscriptionSettingTab extends PluginSettingTab {
 					if (value == 'swiftink') {
 						containerEl.findAll('.swiftink.settings').forEach((element) => { element.style.display = 'block'; });
 						containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'none'; });
+						containerEl.findAll('.azure-settings').forEach((element) => { element.style.display = 'none'; });
 					}
 					else if (value == 'whisper_asr') {
 						containerEl.findAll('.swiftink.settings').forEach((element) => { element.style.display = 'none'; });
 						containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'block'; });
+						containerEl.findAll('.azure-settings').forEach((element) => { element.style.display = 'none'; });
+					}
+					else if (value == 'azure_speech_service') {
+						containerEl.findAll('.swiftink.settings').forEach((element) => { element.style.display = 'none'; });
+						containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'none'; });
+						containerEl.findAll('.azure-settings').forEach((element) => { element.style.display = 'block'; });
 					}
 				}));
 
@@ -292,6 +305,46 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setName('Azure Speech Service Settings')
+			.setClass('azure-settings')
+			.setHeading()
+
+		new Setting(containerEl)
+			.setName('Azure key')
+			.setDesc('Access key for Azure Speech Service')
+			.setClass('azure-settings')
+			.addText(text => text
+				.setValue(this.plugin.settings.azureKey)
+				.onChange(async (value) => {
+					this.plugin.settings.azureKey = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Azure region')
+			.setDesc('The location of your resource')
+			.setClass('azure-settings')
+			.addText(text => text
+				.setPlaceholder(DEFAULT_SETTINGS.azureRegion)
+				.setValue(this.plugin.settings.azureRegion)
+				.onChange(async (value) => {
+					this.plugin.settings.azureRegion = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Language')
+			.setClass('azure-settings')
+			.addDropdown(dropdown => dropdown
+				.addOption('en-US', 'English (US)')
+				.addOption('uk-UA', 'Ukrainian')
+				.setValue(this.plugin.settings.azureLang)
+				.onChange(async (value) => {
+					this.plugin.settings.azureLang = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
 			.setName('Advanced Settings')
 			.setHeading()
 
@@ -322,10 +375,17 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		if (this.plugin.settings.transcription_engine == 'swiftink') {
 			containerEl.findAll('.swiftink.settings').forEach((element) => { element.style.display = 'block'; });
 			containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'none'; });
+			containerEl.findAll('.azure-settings').forEach((element) => { element.style.display = 'none'; });
 		}
 		else if (this.plugin.settings.transcription_engine == 'whisper_asr') {
 			containerEl.findAll('.swiftink.settings').forEach((element) => { element.style.display = 'none'; });
 			containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'block'; });
+			containerEl.findAll('.azure-settings').forEach((element) => { element.style.display = 'none'; });
+		}
+		else if (this.plugin.settings.transcription_engine == 'azure_speech_service') {
+			containerEl.findAll('.swiftink.settings').forEach((element) => { element.style.display = 'none'; });
+			containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'none'; });
+			containerEl.findAll('.azure-settings').forEach((element) => { element.style.display = 'block'; });
 		}
 
 		// If debug mode is off, hide the dev mode setting
