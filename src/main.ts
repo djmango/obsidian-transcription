@@ -2,6 +2,7 @@ import { ChildProcess } from 'child_process';
 import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TFile, Notice, Platform } from 'obsidian';
 import { TranscriptionEngine } from 'src/transcribe';
 import { StatusBar } from './status';
+import { createClient } from "@supabase/supabase-js"
 
 interface TranscriptionSettings {
 	timestamps: boolean;
@@ -11,7 +12,6 @@ interface TranscriptionSettings {
 	whisperASRUrl: string;
 	debug: boolean;
 	dev: boolean;
-	swiftinkToken: string;
 	transcription_engine: string
 }
 
@@ -23,7 +23,6 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 	whisperASRUrl: 'http://localhost:9000',
 	debug: false,
 	dev: false,
-	swiftinkToken: '',
 	transcription_engine: 'swiftink'
 }
 
@@ -36,10 +35,25 @@ export default class Transcription extends Plugin {
 	public transcription_engine: TranscriptionEngine;
 	statusBar: StatusBar;
 
+	public supabase = createClient(
+		'https://auth.swiftink.io',
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjZGVxZ3JzcWFleHBub2dhdWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODU2OTM4NDUsImV4cCI6MjAwMTI2OTg0NX0.BBxpvuejw_E-Q_g6SU6G6sGP_6r4KnrP-vHV2JZpAho',
+		{
+			auth: {
+				detectSessionInUrl: false,
+				autoRefreshToken: true,
+				persistSession: true,
+			}
+		}
+	)
+
 	async onload() {
 		await this.loadSettings();
+
 		Transcription.plugin = this;
 		console.log('Loading Obsidian Transcription');
+		if (this.settings.debug) console.log('Debug mode enabled');
+		if (this.settings.debug) console.log(await this.supabase.auth.getSession());
 
 		if (!Platform.isMobileApp) {
 			this.statusBar = new StatusBar(this.addStatusBarItem());
@@ -79,9 +93,13 @@ export default class Transcription extends Plugin {
 			name: 'Transcribe all audio files in view',
 			editorCallback: async (editor: Editor, view: MarkdownView) => {
 				// Get the current filepath
-				const markdownFilePath = view.file.path;
+				const markdownFilePath = view.file?.path;
+				if (markdownFilePath === undefined) {
+					if (this.settings.debug) console.log('Could not get markdown file path');
+					return;
+				}
 				if (this.settings.debug) console.log('Transcribing all audio files in ' + markdownFilePath);
-				new Notice('Transcribing all audio files in ' + view.file.name, 3000);
+				new Notice('Transcribing all audio files in ' + view.file?.name, 3000);
 
 				// Get all linked files in the markdown file
 				const filesLinked = Object.keys(this.app.metadataCache.resolvedLinks[markdownFilePath]);
@@ -108,6 +126,10 @@ export default class Transcription extends Plugin {
 
 
 				// Now that we have all the files to transcribe, we can transcribe them
+				if (view.file === null) {
+					if (this.settings.debug) console.error('Could not get markdown file path');
+					return;
+				}
 				for (const fileToTranscribe of filesToTranscribe) {
 					transcribeAndWrite(view.file, fileToTranscribe);
 				}
@@ -145,6 +167,23 @@ export default class Transcription extends Plugin {
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new TranscriptionSettingTab(this.app, this));
+
+		this.registerObsidianProtocolHandler('swiftink_auth', async (callback) => {
+			console.log(callback);
+			console.log(callback.hash);
+			const params = new URLSearchParams(callback.hash);
+			const access_token = params.get('access_token');
+			const refresh_token = params.get('refresh_token');
+
+			if (!access_token || !refresh_token) {
+				new Notice('Error authenticating with Swiftink.io');
+				return;
+			}
+
+			if (this.settings.debug) console.log(await this.supabase.auth.setSession({ access_token: access_token, refresh_token: refresh_token }));
+			return;
+		});
+
 	}
 
 	onunload() {
@@ -182,7 +221,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Transcription engine')
 			.setDesc('The transcription engine to use')
-			.setTooltip('Swiftink.io is a cloud based transcription engine (no local set up, mobile friendly). Whisper ASR is a self-hosted local transcription engine that uses the Whisper ASR python app. (requires local setup)')
+			.setTooltip('Swiftink.io is a cloud based transcription engine (no local set up, additional AI features). Whisper ASR is a self-hosted local transcription engine that uses the Whisper ASR python app. (requires local setup)')
 			.setClass('transcription-engine-setting')
 			.addDropdown(dropdown => dropdown
 				.addOption('swiftink', 'Swiftink')
@@ -193,11 +232,11 @@ class TranscriptionSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 					// Hide the settings for the other transcription engine
 					if (value == 'swiftink') {
-						containerEl.findAll('.swiftink.settings').forEach((element) => { element.style.display = 'block'; });
+						containerEl.findAll('.swiftink-settings').forEach((element) => { element.style.display = 'block'; });
 						containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'none'; });
 					}
 					else if (value == 'whisper_asr') {
-						containerEl.findAll('.swiftink.settings').forEach((element) => { element.style.display = 'none'; });
+						containerEl.findAll('.swiftink-settings').forEach((element) => { element.style.display = 'none'; });
 						containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'block'; });
 					}
 				}));
@@ -219,13 +258,33 @@ class TranscriptionSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Swiftink Settings')
-			.setClass('swiftink.settings')
+			.setClass('swiftink-settings')
 			.setHeading()
+
+		new Setting(containerEl)
+			.setName('Sign in')
+			.setDesc('Sign in with an OAuth provider to get access to Swiftink.io')
+			.setClass('swiftink-settings')
+			.addButton((bt) => {
+				bt.setIcon('google');
+				bt.setButtonText('Sign in with Google')
+				bt.onClick(async () => {
+					this.plugin.supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: 'obsidian://swiftink_auth' } })
+				});
+			})
+			.addButton((bt) => {
+				bt.setIcon('github');
+				bt.setButtonText('Sign in with GitHub')
+				bt.onClick(async () => {
+					this.plugin.supabase.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: 'obsidian://swiftink_auth' } })
+				});
+			});
+
 
 		new Setting(containerEl)
 			.setName('Enable translation')
 			.setDesc('Translate the transcription from any language to English')
-			.setClass('swiftink.settings')
+			.setClass('swiftink-settings')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.translate)
 				.onChange(async (value) => {
@@ -236,7 +295,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Enable timestamps')
 			.setDesc('Add timestamps to the beginning of each line')
-			.setClass('swiftink.settings')
+			.setClass('swiftink-settings')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.timestamps)
 				.onChange(async (value) => {
@@ -247,7 +306,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Timestamp format')
 			.setDesc('The format of the timestamps: date-fns.org/docs/format')
-			.setClass('swiftink.settings')
+			.setClass('swiftink-settings')
 			.addDropdown(dropdown => dropdown
 				.addOption('HH:mm:ss', 'HH:mm:ss')
 				.addOption('mm:ss', 'mm:ss')
@@ -259,19 +318,19 @@ class TranscriptionSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-		new Setting(containerEl)
-			.setName('Swiftink.io Token')
-			.setDesc('The token used to authenticate with the Swiftink API. Get one at swiftink.io')
-			.setClass('swiftink-settings')
-			.addText(text => text
-				.setPlaceholder(DEFAULT_SETTINGS.swiftinkToken)
-				.setValue(this.plugin.settings.swiftinkToken)
-				.onChange(async (value) => {
-					this.plugin.settings.swiftinkToken = value;
-					await this.plugin.saveSettings();
-				}).then((element) => {
-					element.inputEl.type = 'password';
-				}));
+		// new Setting(containerEl)
+		// 	.setName('Swiftink.io Token')
+		// 	.setDesc('The token used to authenticate with the Swiftink API. Get one at swiftink.io')
+		// 	.setClass('swiftink-settings')
+		// 	.addText(text => text
+		// 		.setPlaceholder(DEFAULT_SETTINGS.swiftinkToken)
+		// 		.setValue(this.plugin.settings.swiftinkToken)
+		// 		.onChange(async (value) => {
+		// 			this.plugin.settings.swiftinkToken = value;
+		// 			await this.plugin.saveSettings();
+		// 		}).then((element) => {
+		// 			element.inputEl.type = 'password';
+		// 		}));
 
 
 		new Setting(containerEl)
@@ -320,11 +379,11 @@ class TranscriptionSettingTab extends PluginSettingTab {
 
 		// Initially hide the settings for the other transcription engine
 		if (this.plugin.settings.transcription_engine == 'swiftink') {
-			containerEl.findAll('.swiftink.settings').forEach((element) => { element.style.display = 'block'; });
+			containerEl.findAll('.swiftink-settings').forEach((element) => { element.style.display = 'block'; });
 			containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'none'; });
 		}
 		else if (this.plugin.settings.transcription_engine == 'whisper_asr') {
-			containerEl.findAll('.swiftink.settings').forEach((element) => { element.style.display = 'none'; });
+			containerEl.findAll('.swiftink-settings').forEach((element) => { element.style.display = 'none'; });
 			containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'block'; });
 		}
 

@@ -1,13 +1,14 @@
 {
 	"name": "obsidian-transcription",
-	"version": "2.2.3",
+	"version": "3.0.0",
 	"description": "Obsidian plugin to create high-quality text transcriptions from any media file, on any device",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"lint": "eslint ./src --fix",
-		"version": "node version-bump.mjs && git add manifest.json versions.json"
+		"version": "node version-bump.mjs && git add manifest.json versions.json",
+		"get_types": "npx openapi-typescript https://api.swiftink.io/openapi.json --output src/types/swiftink.d.ts"
 	},
 	"keywords": [
 		"audio transcription",
@@ -23,7 +24,9 @@
 		"stt",
 		"transcription",
 		"whisper",
-		"domain-aware"
+		"domain-aware",
+		"asr",
+		"nlp"
 	],
 	"author": "djmango",
 	"license": "MIT",
@@ -40,6 +43,7 @@
 		"typescript": "4.7.4"
 	},
 	"dependencies": {
+		"@supabase/supabase-js": "^2.33.1",
 		"date-fns": "^2.29.3"
 	}
 }

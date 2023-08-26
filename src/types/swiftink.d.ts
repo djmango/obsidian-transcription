@@ -9,9 +9,13 @@ export interface paths {
     /** Hello */
     get: operations["swiftink_api_api_hello"];
   };
-  "/me": {
-    /** Me */
-    get: operations["swiftink_api_api_me"];
+  "/status": {
+    /** Status */
+    get: operations["swiftink_api_api_status"];
+  };
+  "/transcripts/upload": {
+    /** Generate Presigned Url */
+    post: operations["swiftink_api_routers_transcript_transcript_router_generate_presigned_url"];
   };
   "/transcripts/": {
     /**
@@ -70,12 +74,58 @@ export interface paths {
      */
     post: operations["swiftink_api_routers_stripe_stripe_router_create_checkout_session"];
   };
+  "/stripe/create_portal_session": {
+    /**
+     * Create Portal Session
+     * @description Create a portal session for the current user to manage their billing details
+     */
+    post: operations["swiftink_api_routers_stripe_stripe_router_create_portal_session"];
+  };
+  "/users/me": {
+    /**
+     * Me
+     * @description Get the current user's profile
+     */
+    get: operations["swiftink_api_routers_user_user_router_me"];
+    /**
+     * Update Me
+     * @description Update the current user's profile name
+     */
+    put: operations["swiftink_api_routers_user_user_router_update_me"];
+    /**
+     * Create Me
+     * @description Create the user and profile within Supabase
+     */
+    post: operations["swiftink_api_routers_user_user_router_create_me"];
+    /**
+     * Delete Me
+     * @description Delete the current user's profile and cancel all subscriptions
+     */
+    delete: operations["swiftink_api_routers_user_user_router_delete_me"];
+  };
 }
 
 export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
+    /**
+     * GeneratePresignedResponse
+     * @description Response for uploading a file
+     */
+    GeneratePresignedResponse: {
+      /**
+       * Url
+       * Format: uri
+       * @description The URL to POST the file to
+       */
+      url: string;
+      /**
+       * Filename
+       * @description The filename to use for the file
+       */
+      filename: string;
+    };
     /** TimestampedTextSegment */
     TimestampedTextSegment: {
       /**
@@ -105,12 +155,6 @@ export interface components {
        * @description Unique ID for the transcript
        */
       id?: string;
-      /**
-       * User Id
-       * Format: uuid
-       * @description User who owns the transcript
-       */
-      user_id: string;
       /**
        * Created
        * Format: date-time
@@ -208,6 +252,19 @@ export interface components {
        * @description Transcript summary
        */
       summary?: string;
+      /**
+       * User Id
+       * Format: uuid
+       */
+      user_id: string;
+    };
+    /** WebhookSchema */
+    WebhookSchema: {
+      /**
+       * Url
+       * @description The URL to POST the JSON transcript to on completion
+       */
+      url: string;
     };
     /** CreateTranscriptionRequest */
     CreateTranscriptionRequest: {
@@ -224,6 +281,22 @@ export interface components {
        * @example https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4
        */
       url: string;
+      /**
+       * Do Async
+       * @description Whether or not to run the transcription asynchronously
+       * @default true
+       */
+      do_async?: boolean;
+      /**
+       * Webhooks
+       * @description Webhooks to be called to update on the status of the transcription
+       */
+      webhooks?: components["schemas"]["WebhookSchema"][];
+      /**
+       * Context
+       * @description Context to be used for the transcription
+       */
+      context?: string;
     };
     /** APIKeySchema */
     APIKeySchema: {
@@ -233,14 +306,9 @@ export interface components {
        */
       id?: string;
       /**
-       * User Id
-       * Format: uuid
-       * @description The user that owns this API Key
-       */
-      user_id: string;
-      /**
        * Name
        * @description The API Key's name, user defined
+       * @default API Key
        */
       name?: string;
       /**
@@ -256,11 +324,15 @@ export interface components {
        */
       updated: string;
       /**
-       * Last Used
-       * Format: date-time
-       * @description Time the record was last used
+       * Secret
+       * @description The API key's secret. Only returned when creating a new API key.
        */
-      last_used?: string;
+      secret?: string;
+      /**
+       * User Id
+       * Format: uuid
+       */
+      user_id: string;
     };
     /** CreateAPIKeyResponse */
     CreateAPIKeyResponse: {
@@ -270,14 +342,9 @@ export interface components {
        */
       id?: string;
       /**
-       * User Id
-       * Format: uuid
-       * @description The user that owns this API Key
-       */
-      user_id: string;
-      /**
        * Name
        * @description The API Key's name, user defined
+       * @default API Key
        */
       name?: string;
       /**
@@ -293,16 +360,15 @@ export interface components {
        */
       updated: string;
       /**
-       * Last Used
-       * Format: date-time
-       * @description Time the record was last used
-       */
-      last_used?: string;
-      /**
        * Secret
        * @description The secret key string to use in plugins and HTTP headers for Swiftink authentication
        */
       secret: string;
+      /**
+       * User Id
+       * Format: uuid
+       */
+      user_id: string;
     };
     /** UpdateAPIKeyRequest */
     UpdateAPIKeyRequest: {
@@ -331,6 +397,60 @@ export interface components {
       /** @description The price to create a checkout session for */
       price: components["schemas"]["PriceOptions"];
     };
+    /** CreatePortalSessionResponse */
+    CreatePortalSessionResponse: {
+      /**
+       * Url
+       * @description The url to redirect the user to to manage their account
+       */
+      url: string;
+    };
+    /** ProfileSchema */
+    ProfileSchema: {
+      /** Name */
+      name?: string;
+      /** Profile Picture */
+      profile_picture?: string;
+      /**
+       * Created
+       * Format: date-time
+       */
+      created: string;
+      /**
+       * Updated
+       * Format: date-time
+       */
+      updated: string;
+      /** Email */
+      email: string;
+      /**
+       * User Id
+       * Format: uuid
+       */
+      user_id: string;
+    };
+    /** CreateUserRequest */
+    CreateUserRequest: {
+      /**
+       * Email
+       * Format: email
+       */
+      email: string;
+      /** Password */
+      password: string;
+      /** Name */
+      name: string;
+    };
+    /** UpdateProfileRequest */
+    UpdateProfileRequest: {
+      /** Name */
+      name?: string;
+      /**
+       * Profile Picture
+       * Format: uri
+       */
+      profile_picture?: string;
+    };
   };
   responses: never;
   parameters: never;
@@ -338,6 +458,8 @@ export interface components {
   headers: never;
   pathItems: never;
 }
+
+export type $defs = Record<string, never>;
 
 export type external = Record<string, never>;
 
@@ -347,14 +469,37 @@ export interface operations {
   swiftink_api_api_hello: {
     responses: {
       /** @description OK */
-      200: never;
+      200: {
+        content: never;
+      };
     };
   };
-  /** Me */
-  swiftink_api_api_me: {
+  /** Status */
+  swiftink_api_api_status: {
     responses: {
       /** @description OK */
-      200: never;
+      200: {
+        content: never;
+      };
+    };
+  };
+  /** Generate Presigned Url */
+  swiftink_api_routers_transcript_transcript_router_generate_presigned_url: {
+    responses: {
+      /** @description Created */
+      201: {
+        content: {
+          "application/json": components["schemas"]["GeneratePresignedResponse"];
+        };
+      };
+      /** @description Payment Required */
+      402: {
+        content: {
+          "application/json": {
+            [key: string]: string;
+          };
+        };
+      };
     };
   };
   /**
@@ -389,7 +534,15 @@ export interface operations {
       400: {
         content: {
           "application/json": {
-            [key: string]: string | undefined;
+            [key: string]: string;
+          };
+        };
+      };
+      /** @description Payment Required */
+      402: {
+        content: {
+          "application/json": {
+            [key: string]: string;
           };
         };
       };
@@ -416,12 +569,14 @@ export interface operations {
       403: {
         content: {
           "application/json": {
-            [key: string]: string | undefined;
+            [key: string]: string;
           };
         };
       };
       /** @description Not Found */
-      404: never;
+      404: {
+        content: never;
+      };
     };
   };
   /**
@@ -436,17 +591,21 @@ export interface operations {
     };
     responses: {
       /** @description No Content */
-      204: never;
+      204: {
+        content: never;
+      };
       /** @description Forbidden */
       403: {
         content: {
           "application/json": {
-            [key: string]: string | undefined;
+            [key: string]: string;
           };
         };
       };
       /** @description Not Found */
-      404: never;
+      404: {
+        content: never;
+      };
     };
   };
   /**
@@ -498,12 +657,14 @@ export interface operations {
       403: {
         content: {
           "application/json": {
-            [key: string]: string | undefined;
+            [key: string]: string;
           };
         };
       };
       /** @description Not Found */
-      404: never;
+      404: {
+        content: never;
+      };
     };
   };
   /**
@@ -532,12 +693,14 @@ export interface operations {
       403: {
         content: {
           "application/json": {
-            [key: string]: string | undefined;
+            [key: string]: string;
           };
         };
       };
       /** @description Not Found */
-      404: never;
+      404: {
+        content: never;
+      };
     };
   };
   /**
@@ -552,17 +715,21 @@ export interface operations {
     };
     responses: {
       /** @description No Content */
-      204: never;
+      204: {
+        content: never;
+      };
       /** @description Forbidden */
       403: {
         content: {
           "application/json": {
-            [key: string]: string | undefined;
+            [key: string]: string;
           };
         };
       };
       /** @description Not Found */
-      404: never;
+      404: {
+        content: never;
+      };
     };
   };
   /**
@@ -580,6 +747,116 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["CreateCheckoutSessionResponse"];
+        };
+      };
+    };
+  };
+  /**
+   * Create Portal Session
+   * @description Create a portal session for the current user to manage their billing details
+   */
+  swiftink_api_routers_stripe_stripe_router_create_portal_session: {
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": components["schemas"]["CreatePortalSessionResponse"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        content: {
+          "application/json": {
+            [key: string]: string;
+          };
+        };
+      };
+    };
+  };
+  /**
+   * Me
+   * @description Get the current user's profile
+   */
+  swiftink_api_routers_user_user_router_me: {
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ProfileSchema"];
+        };
+      };
+    };
+  };
+  /**
+   * Update Me
+   * @description Update the current user's profile name
+   */
+  swiftink_api_routers_user_user_router_update_me: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateProfileRequest"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ProfileSchema"];
+        };
+      };
+    };
+  };
+  /**
+   * Create Me
+   * @description Create the user and profile within Supabase
+   */
+  swiftink_api_routers_user_user_router_create_me: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateUserRequest"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        content: {
+          "application/json": components["schemas"]["ProfileSchema"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        content: {
+          "application/json": {
+            [key: string]: string;
+          };
+        };
+      };
+      /** @description Conflict */
+      409: {
+        content: {
+          "application/json": {
+            [key: string]: string;
+          };
+        };
+      };
+    };
+  };
+  /**
+   * Delete Me
+   * @description Delete the current user's profile and cancel all subscriptions
+   */
+  swiftink_api_routers_user_user_router_delete_me: {
+    responses: {
+      /** @description No Content */
+      204: {
+        content: never;
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        content: {
+          "application/json": {
+            [key: string]: string;
+          };
         };
       };
     };
