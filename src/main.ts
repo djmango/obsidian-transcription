@@ -55,6 +55,13 @@ export default class Transcription extends Plugin {
 		if (this.settings.debug) console.log('Debug mode enabled');
 		if (this.settings.debug) console.log(await this.supabase.auth.getSession());
 
+		// Prompt the user to sign in if the have Swiftink selected and are not signed in
+		if (
+			this.settings.transcription_engine == 'swiftink' &&
+			(await this.supabase.auth.getSession().then((res) => { return res.data.session == null }))) {
+			new Notice('Please sign in to Swiftink.io via the settings tab', 4000);
+		}
+
 		if (!Platform.isMobileApp) {
 			this.statusBar = new StatusBar(this.addStatusBarItem());
 			this.registerInterval(
@@ -62,7 +69,7 @@ export default class Transcription extends Plugin {
 			);
 		}
 
-		this.transcription_engine = new TranscriptionEngine(this.settings, this.app.vault, this.statusBar);
+		this.transcription_engine = new TranscriptionEngine(this.settings, this.app.vault, this.statusBar, this.supabase);
 		const transcribeAndWrite = async (parent_file: TFile, file: TFile) => {
 			if (this.settings.debug) console.log('Transcribing ' + file.path);
 			// Check if view has file
@@ -262,35 +269,20 @@ class TranscriptionSettingTab extends PluginSettingTab {
 			.setHeading()
 
 		new Setting(containerEl)
-			.setName('Sign in')
-			.setDesc('Sign in with an OAuth provider to get access to Swiftink.io')
 			.setClass('swiftink-settings')
+			.setName('Sign in to Swiftink.io')
 			.addButton((bt) => {
-				bt.setIcon('google');
-				bt.setButtonText('Sign in with Google')
+				bt.setButtonText('Sign in with Google');
 				bt.onClick(async () => {
 					this.plugin.supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: 'obsidian://swiftink_auth' } })
 				});
 			})
 			.addButton((bt) => {
-				bt.setIcon('github');
-				bt.setButtonText('Sign in with GitHub')
+				bt.setButtonText('Sign in with GitHub');
 				bt.onClick(async () => {
 					this.plugin.supabase.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: 'obsidian://swiftink_auth' } })
 				});
 			});
-
-
-		new Setting(containerEl)
-			.setName('Enable translation')
-			.setDesc('Translate the transcription from any language to English')
-			.setClass('swiftink-settings')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.translate)
-				.onChange(async (value) => {
-					this.plugin.settings.translate = value;
-					await this.plugin.saveSettings();
-				}));
 
 		new Setting(containerEl)
 			.setName('Enable timestamps')
@@ -313,25 +305,9 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				.addOption('ss', 'ss')
 				.setValue(this.plugin.settings.timestampFormat)
 				.onChange(async (value) => {
-					// Validate with regex that we have a valid date-fns format
 					this.plugin.settings.timestampFormat = value;
 					await this.plugin.saveSettings();
 				}));
-
-		// new Setting(containerEl)
-		// 	.setName('Swiftink.io Token')
-		// 	.setDesc('The token used to authenticate with the Swiftink API. Get one at swiftink.io')
-		// 	.setClass('swiftink-settings')
-		// 	.addText(text => text
-		// 		.setPlaceholder(DEFAULT_SETTINGS.swiftinkToken)
-		// 		.setValue(this.plugin.settings.swiftinkToken)
-		// 		.onChange(async (value) => {
-		// 			this.plugin.settings.swiftinkToken = value;
-		// 			await this.plugin.saveSettings();
-		// 		}).then((element) => {
-		// 			element.inputEl.type = 'password';
-		// 		}));
-
 
 		new Setting(containerEl)
 			.setName('Whisper ASR Settings')

@@ -5,6 +5,8 @@ import { paths, components } from "./types/swiftink";
 import { payloadGenerator, PayloadData } from "src/utils";
 import { StatusBar } from "./status";
 import axios from "axios";
+import { SupabaseClient } from "@supabase/supabase-js";
+import * as tus from "tus-js-client";
 
 // This class is the parent for transcription engines. It takes settings and a file as an input and returns a transcription as a string
 
@@ -14,6 +16,7 @@ export class TranscriptionEngine {
 	settings: TranscriptionSettings;
 	vault: Vault;
 	status_bar: StatusBar | null;
+	supabase: SupabaseClient;
 
 	transcriptionEngine: TranscriptionBackend
 
@@ -22,10 +25,11 @@ export class TranscriptionEngine {
 		"whisper_asr": this.getTranscriptionWhisperASR
 	}
 
-	constructor(settings: TranscriptionSettings, vault: Vault, statusBar: StatusBar | null) {
+	constructor(settings: TranscriptionSettings, vault: Vault, statusBar: StatusBar | null, supabase: SupabaseClient) {
 		this.settings = settings;
 		this.vault = vault;
 		this.status_bar = statusBar;
+		this.supabase = supabase;
 	}
 
 	segmentsToTimestampedString(segments: components['schemas']['TimestampedTextSegment'][], timestampFormat: string): string {
@@ -102,78 +106,110 @@ export class TranscriptionEngine {
 		// if (this.settings.dev) api_base = 'https://api.swiftink.io'
 		else api_base = 'https://api.swiftink.io'
 
-		let url = `${api_base}/transcripts/upload`
-		let headers = { 'Authorization': `Bearer ${this.settings.swiftinkToken}` }
-		console.log(headers)
+		const token = await this.supabase.auth.getSession().then((res) => { return res.data?.session?.access_token });
+		const id = await this.supabase.auth.getSession().then((res) => { return res.data?.session?.user?.id });
+		if (token === undefined) return Promise.reject('No token found');
+		if (id === undefined) return Promise.reject('No user id found');
 
-		// Get a Pre-signed URL from Swiftink
-		const upload_response = await axios.post(url, {}, { headers: headers })
-		const upload_data: paths['/transcripts/upload']['post']['responses']['201']['content']['application/json'] = upload_response.data
+		const fileStream = await this.vault.readBinary(file);
+		const filename = file.name.replace(/[^a-zA-Z0-9.]+/g, '-');
 
-		// Now POST the file to the Pre-signed URL
-		if (this.settings.debug) console.log('Uploading file to Swiftink...');
-		if (this.settings.verbosity >= 1) {
-			if (this.status_bar !== null) this.status_bar.displayMessage('Uploading...', 5000);
-			else new Notice('Uploading file to Swiftink...', 3000);
+		const uploadPromise = new Promise<tus.Upload>((resolve, reject) => {
+			var upload = new tus.Upload(new Blob([fileStream]), {
+				endpoint: `https://auth.swiftink.io/storage/v1/upload/resumable`,
+				retryDelays: [0, 3000, 5000, 10000, 20000],
+				headers: {
+					authorization: `Bearer ${token}`,
+					'x-upsert': 'true', // set upsert to true to overwrite existing files
+				},
+				uploadDataDuringCreation: true,
+				metadata: {
+					bucketName: 'swiftink-upload',
+					objectName: `${id}/${filename}`,
+				},
+				chunkSize: 6 * 1024 * 1024, // Supabase only supports 6MB chunks
+				onError: (error) => {
+					if (this.settings.debug) console.log('Failed because: ' + error);
+					reject(error);
+				},
+				onProgress: (bytesUploaded, bytesTotal) => {
+					var percentage = ((bytesUploaded / bytesTotal) * 100).toFixed(2);
+					if (this.settings.debug) console.log(bytesUploaded, bytesTotal, percentage + '%');
+					// if (this.settings.verbosity >= 1) {
+					// 	if (this.status_bar !== null) this.status_bar.displayMessage(`${percentage}%`, 5000);
+					// 	else new Notice(`${percentage}%`, 3000);
+					// }
+				},
+				onSuccess: () => {
+					if (this.settings.debug) console.log(`Successfully uploaded ${filename} to Swiftink`);
+					resolve(upload);
+				},
+			});
+
+			upload.start()
+		})
+
+
+		let uploadResult: tus.Upload;
+		try {
+			uploadResult = await uploadPromise;
+			console.log('Finished uploading file to Swiftink');
+			// Do something with the uploadResult if needed
+		} catch (error) {
+			if (this.settings.debug) console.log('Failed to upload to Swiftink: ', error);
+			return Promise.reject(error);
 		}
-		const upload_file_request = await axios.post(upload_data.url, await this.vault.readBinary(file))
 
-		if (this.settings.debug) console.log(upload_file_request);
-		return ''
+		// Now lets create the transcription job
 
-		// Wait for Swiftink to finish transcribing the file
+		// Lets first construct a fake public URL for the file, Swiftink can parse this URL to get the bucket and object name
+		const fileUrl = `https://auth.swiftink.io/storage/v1/object/public/swiftink-upload/${id}/${filename}`
 
-		// const get_transcription_request: RequestUrlParam = {
-		// 	method: 'GET',
-		// 	url: `${api_base}/transcripts/${create_transcription_response.id}`,
-		// 	headers: { 'Authorization': `Bearer ${this.settings.swiftinkToken}` }
-		// }
+		let url = `${api_base}/transcripts/`
+		let headers = { 'Authorization': `Bearer ${token}` }
+		const body: paths['/transcripts/']['post']['requestBody']['content']['application/json'] = {
+			name: filename,
+			url: fileUrl,
+		}
 
-		// if (this.settings.debug) console.log('Waiting for Swiftink to finish transcribing...');
+		const transcript_create_res = await axios.post(url, body, { headers: headers })
+		let transcript: components['schemas']['TranscriptSchema'] = transcript_create_res.data
+		if (this.settings.debug) console.log(transcript);
 
-		// // Poll Swiftink until the transcription is complete
-		// let tries = 0;
-		// const max_tries = 200;
-		// const sleep_time = 3000;
-
-		// // eslint-disable-next-line no-constant-condition
-		// while (true) {
-		// 	// Get the transcription status
-		// 	const transcription: paths['/transcripts/{id}']['get']['responses']['200']['content']['application/json'] = await requestUrl(get_transcription_request).json;
-		// 	if (this.settings.debug) console.log(transcription);
-
-		// 	// If the transcription is complete, return the transcription text
-		// 	if (transcription.status == 'complete' &&
-		// 		transcription.text_segments !== undefined &&
-		// 		transcription.text !== undefined) {
-		// 		// Idk how asserts work in JS, but this should be an assert
-
-		// 		if (this.settings.debug) console.log('Swiftink finished transcribing');
-		// 		if (this.settings.verbosity >= 1) {
-		// 			if (this.status_bar !== null) this.status_bar.displayMessage('100% - Complete!', 3000, true);
-		// 			else new Notice('Swiftink finished transcribing', 3000)
-		// 		}
-
-		// 		if (this.settings.timestamps) return this.segmentsToTimestampedString(transcription.text_segments, this.settings.timestampFormat);
-		// 		else return transcription.text;
-		// 	}
-		// 	else if (tries > max_tries) {
-		// 		if (this.settings.debug) console.error('Swiftink took too long to transcribe the file');
-		// 		return Promise.reject('Swiftink took too long to transcribe the file');
-		// 	}
-		// 	else if (transcription.status == 'failed') {
-		// 		if (this.settings.debug) console.error('Swiftink failed to transcribe the file');
-		// 		return Promise.reject('Swiftink failed to transcribe the file');
-		// 	}
-		// 	else if (transcription.status == 'validation_failed') {
-		// 		if (this.settings.debug) console.error('Swiftink has detected an invalid file');
-		// 		return Promise.reject('Swiftink has detected an invalid file');
-		// 	}
-		// 	// If the transcription is still in progress, wait 3 seconds and try again
-		// 	else {
-		// 		tries += 1;
-		// 		await sleep(sleep_time);
-		// 	}
-		// }
+		// Poll the API until the transcription is complete
+		return new Promise((resolve, reject) => {
+			let tries = 0
+			const poll = setInterval(async () => {
+				const transcript_res = await axios.get(`${api_base}/transcripts/${transcript.id}`, { headers: headers })
+				transcript = transcript_res.data
+				console.log(transcript)
+				if (transcript.status === 'transcribed' || transcript.status === 'completed') {
+					clearInterval(poll)
+					if (this.settings.timestamps) resolve(this.segmentsToTimestampedString(transcript.text_segments, this.settings.timestampFormat));
+					else resolve(transcript.text ? transcript.text : '');
+				}
+				else if (tries > 20) {
+					if (this.settings.debug) console.error('Swiftink took too long to transcribe the file');
+					clearInterval(poll)
+					reject('Swiftink took too long to transcribe the file');
+				}
+				else if (transcript.status == 'failed') {
+					if (this.settings.debug) console.error('Swiftink failed to transcribe the file');
+					clearInterval(poll)
+					reject('Swiftink failed to transcribe the file');
+				}
+				else if (transcript.status == 'validation_failed') {
+					if (this.settings.debug) console.error('Swiftink has detected an invalid file');
+					clearInterval(poll)
+					reject('Swiftink has detected an invalid file');
+				}
+				else if (tries > 20) {
+					if (this.settings.debug) console.error('Swiftink took too long to transcribe the file');
+					clearInterval(poll)
+					reject('Swiftink took too long to transcribe the file')
+				}
+				tries++;
+			}, 3000)
+		})
 	}
 }
