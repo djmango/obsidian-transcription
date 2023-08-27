@@ -1,5 +1,5 @@
 import { TranscriptionSettings } from "src/main";
-import { Notice, requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
+import { requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
 import { format } from "date-fns";
 import { paths, components } from "./types/swiftink";
 import { payloadGenerator, PayloadData } from "src/utils";
@@ -115,7 +115,7 @@ export class TranscriptionEngine {
 		const filename = file.name.replace(/[^a-zA-Z0-9.]+/g, '-');
 
 		const uploadPromise = new Promise<tus.Upload>((resolve, reject) => {
-			var upload = new tus.Upload(new Blob([fileStream]), {
+			const upload = new tus.Upload(new Blob([fileStream]), {
 				endpoint: `https://auth.swiftink.io/storage/v1/upload/resumable`,
 				retryDelays: [0, 3000, 5000, 10000, 20000],
 				headers: {
@@ -133,7 +133,7 @@ export class TranscriptionEngine {
 					reject(error);
 				},
 				onProgress: (bytesUploaded, bytesTotal) => {
-					var percentage = ((bytesUploaded / bytesTotal) * 100).toFixed(2);
+					const percentage = ((bytesUploaded / bytesTotal) * 100).toFixed(2);
 					if (this.settings.debug) console.log(bytesUploaded, bytesTotal, percentage + '%');
 					// if (this.settings.verbosity >= 1) {
 					// 	if (this.status_bar !== null) this.status_bar.displayMessage(`${percentage}%`, 5000);
@@ -150,11 +150,8 @@ export class TranscriptionEngine {
 		})
 
 
-		let uploadResult: tus.Upload;
 		try {
-			uploadResult = await uploadPromise;
-			console.log('Finished uploading file to Swiftink');
-			// Do something with the uploadResult if needed
+			await uploadPromise;
 		} catch (error) {
 			if (this.settings.debug) console.log('Failed to upload to Swiftink: ', error);
 			return Promise.reject(error);
@@ -165,8 +162,8 @@ export class TranscriptionEngine {
 		// Lets first construct a fake public URL for the file, Swiftink can parse this URL to get the bucket and object name
 		const fileUrl = `https://auth.swiftink.io/storage/v1/object/public/swiftink-upload/${id}/${filename}`
 
-		let url = `${api_base}/transcripts/`
-		let headers = { 'Authorization': `Bearer ${token}` }
+		const url = `${api_base}/transcripts/`
+		const headers = { 'Authorization': `Bearer ${token}` }
 		const body: paths['/transcripts/']['post']['requestBody']['content']['application/json'] = {
 			name: filename,
 			url: fileUrl,
@@ -187,11 +184,6 @@ export class TranscriptionEngine {
 					clearInterval(poll)
 					if (this.settings.timestamps) resolve(this.segmentsToTimestampedString(transcript.text_segments, this.settings.timestampFormat));
 					else resolve(transcript.text ? transcript.text : '');
-				}
-				else if (tries > 20) {
-					if (this.settings.debug) console.error('Swiftink took too long to transcribe the file');
-					clearInterval(poll)
-					reject('Swiftink took too long to transcribe the file');
 				}
 				else if (transcript.status == 'failed') {
 					if (this.settings.debug) console.error('Swiftink failed to transcribe the file');
