@@ -188,18 +188,20 @@ export default class Transcription extends Plugin {
 				return;
 			}
 
-			if (this.settings.debug) console.log(await this.supabase.auth.setSession({ access_token: access_token, refresh_token: refresh_token }));
+			await this.supabase.auth.setSession({ access_token: access_token, refresh_token: refresh_token })
 			this.user = await this.supabase.auth.getUser().then((res) => { return res.data.user || null });
+			new Notice('Successfully authenticated with Swiftink.io');
 
 			// Show the settings for user auth/unauth based on whether the user is signed in
 			if (this.user == null) {
-				// document.querySelectorAll('.swiftink-unauthed-only').forEach((element) => { element.style.display = 'block'; });
 				document.querySelectorAll('.swiftink-unauthed-only').forEach((element) => { element.setAttribute('style', 'display: block !important'); });
 				document.querySelectorAll('.swiftink-authed-only').forEach((element) => { element.setAttribute('style', 'display: none !important'); });
 			}
 			else {
 				document.querySelectorAll('.swiftink-unauthed-only').forEach((element) => { element.setAttribute('style', 'display: none !important'); });
 				document.querySelectorAll('.swiftink-authed-only').forEach((element) => { element.setAttribute('style', 'display: block !important'); });
+				// Also set the user's email in the settings tab
+				document.querySelectorAll('.swiftink-manage-account-btn').forEach((element) => { element.innerHTML = `Manage ${this.user?.email}` });
 			}
 			return;
 		});
@@ -306,11 +308,13 @@ class TranscriptionSettingTab extends PluginSettingTab {
 					this.plugin.user = null;
 					containerEl.findAll('.swiftink-unauthed-only').forEach((element) => { element.style.display = 'block'; });
 					containerEl.findAll('.swiftink-authed-only').forEach((element) => { element.style.display = 'none'; });
+					new Notice('Successfully logged out');
 				});
 			})
 			.addButton((bt) => {
 				bt.setButtonText(`Manage ${this.plugin.user?.email}`);
 				bt.setClass('swiftink-authed-only')
+				bt.setClass('swiftink-manage-account-btn')
 				bt.onClick(() => {
 					window.open('https://swiftink.io/home/account', '_blank');
 				});
