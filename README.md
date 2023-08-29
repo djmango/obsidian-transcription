@@ -1,6 +1,6 @@
 # Obsidian Transcription
 
-A plugin to generate high-quality transcriptions of any audio and video file via [OpenAI Whisper](https://openai.com/blog/whisper/).
+Transcription 3.0, with Swiftink.io domain-aware speech-to-text! Create high-quality text transcriptions from any media file, on any device. Best-in-class ASR via [OpenAI Whisper](https://openai.com/blog/whisper/).
 
 ![Demo](media/demo.gif)
 
@@ -8,15 +8,16 @@ A plugin to generate high-quality transcriptions of any audio and video file via
 
 - Wide range of audio and video file formats supported via [ffmpeg](https://ffmpeg.org/).
 - Flexible transcription engines - cloud or local
-  - [Whisper ASR](https://github.com/ahmetoner/whisper-asr-webservice)
+  - [Swiftink.io](https://swiftink.io) - free, high-quality, domain-aware speech-to-text
+  - [Whisper ASR](https://github.com/ahmetoner/whisper-asr-webservice) - local, open-source
 - Start and end timestamps for each line of the transcription
+- Transcribe multiple files at once
+- Transcribe files in the background
+- Summaries, outlines, and notes for each transcription with [Swiftink.io](https://swiftink.io)
 
 ## How to use
 
-1. Install the plugin
-2. Sign up for an account.
-3. Copy the API key from the dashboard, and paste it into the settings of the plugin
-4. Transcribe any audio or video file!
+[![Tutorial](https://img.youtube.com/vi/EyfhLGF3Fxg/0.jpg)](https://www.youtube.com/watch?v=EyfhLGF3Fxg)
 
 ## Contact
 
