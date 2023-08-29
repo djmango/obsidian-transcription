@@ -1,5 +1,5 @@
 import { TranscriptionSettings } from "src/main";
-import { requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
+import { Notice, requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
 import { format } from "date-fns";
 import { paths, components } from "./types/swiftink";
 import { payloadGenerator, PayloadData } from "src/utils";
@@ -135,10 +135,6 @@ export class TranscriptionEngine {
 				onProgress: (bytesUploaded, bytesTotal) => {
 					const percentage = ((bytesUploaded / bytesTotal) * 100).toFixed(2);
 					if (this.settings.debug) console.log(bytesUploaded, bytesTotal, percentage + '%');
-					// if (this.settings.verbosity >= 1) {
-					// 	if (this.status_bar !== null) this.status_bar.displayMessage(`${percentage}%`, 5000);
-					// 	else new Notice(`${percentage}%`, 3000);
-					// }
 				},
 				onSuccess: () => {
 					if (this.settings.debug) console.log(`Successfully uploaded ${filename} to Swiftink`);
@@ -152,6 +148,7 @@ export class TranscriptionEngine {
 
 		try {
 			await uploadPromise;
+			new Notice(`Successfully uploaded ${filename} to Swiftink`);
 		} catch (error) {
 			if (this.settings.debug) console.log('Failed to upload to Swiftink: ', error);
 			return Promise.reject(error);
@@ -182,6 +179,7 @@ export class TranscriptionEngine {
 				console.log(transcript)
 				if (transcript.status === 'transcribed' || transcript.status === 'completed') {
 					clearInterval(poll)
+					new Notice(`Successfully transcribed ${filename} with Swiftink`);
 					if (this.settings.timestamps) resolve(this.segmentsToTimestampedString(transcript.text_segments, this.settings.timestampFormat));
 					else resolve(transcript.text ? transcript.text : '');
 				}

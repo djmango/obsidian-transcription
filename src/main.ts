@@ -2,7 +2,7 @@ import { ChildProcess } from 'child_process';
 import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TFile, Notice, Platform } from 'obsidian';
 import { TranscriptionEngine } from 'src/transcribe';
 import { StatusBar } from './status';
-import { createClient } from "@supabase/supabase-js"
+import { createClient, User } from "@supabase/supabase-js"
 
 interface TranscriptionSettings {
 	timestamps: boolean;
@@ -34,7 +34,6 @@ export default class Transcription extends Plugin {
 	private static transcribeFileExtensions: string[] = ['mp3', 'wav', 'webm', 'ogg', 'flac', 'm4a', 'aac', 'amr', 'opus', 'aiff', 'm3gp', 'mp4', 'm4v', 'mov', 'avi', 'wmv', 'flv', 'mpeg', 'mpg', 'mkv']
 	public transcription_engine: TranscriptionEngine;
 	statusBar: StatusBar;
-
 	public supabase = createClient(
 		'https://auth.swiftink.io',
 		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjZGVxZ3JzcWFleHBub2dhdWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODU2OTM4NDUsImV4cCI6MjAwMTI2OTg0NX0.BBxpvuejw_E-Q_g6SU6G6sGP_6r4KnrP-vHV2JZpAho',
@@ -45,7 +44,8 @@ export default class Transcription extends Plugin {
 				persistSession: true,
 			}
 		}
-	)
+	);
+	public user: User | null;
 
 	async onload() {
 		await this.loadSettings();
@@ -60,6 +60,9 @@ export default class Transcription extends Plugin {
 			this.settings.transcription_engine == 'swiftink' &&
 			(await this.supabase.auth.getSession().then((res) => { return res.data.session == null }))) {
 			new Notice('Please sign in to Swiftink.io via the settings tab', 4000);
+		}
+		else if (this.settings.transcription_engine == 'swiftink') {
+			this.user = await this.supabase.auth.getUser().then((res) => { return res.data.user || null });
 		}
 
 		if (!Platform.isMobileApp) {
@@ -176,8 +179,6 @@ export default class Transcription extends Plugin {
 		this.addSettingTab(new TranscriptionSettingTab(this.app, this));
 
 		this.registerObsidianProtocolHandler('swiftink_auth', async (callback) => {
-			console.log(callback);
-			console.log(callback.hash);
 			const params = new URLSearchParams(callback.hash);
 			const access_token = params.get('access_token');
 			const refresh_token = params.get('refresh_token');
@@ -188,6 +189,18 @@ export default class Transcription extends Plugin {
 			}
 
 			if (this.settings.debug) console.log(await this.supabase.auth.setSession({ access_token: access_token, refresh_token: refresh_token }));
+			this.user = await this.supabase.auth.getUser().then((res) => { return res.data.user || null });
+
+			// Show the settings for user auth/unauth based on whether the user is signed in
+			if (this.user == null) {
+				// document.querySelectorAll('.swiftink-unauthed-only').forEach((element) => { element.style.display = 'block'; });
+				document.querySelectorAll('.swiftink-unauthed-only').forEach((element) => { element.setAttribute('style', 'display: block !important'); });
+				document.querySelectorAll('.swiftink-authed-only').forEach((element) => { element.setAttribute('style', 'display: none !important'); });
+			}
+			else {
+				document.querySelectorAll('.swiftink-unauthed-only').forEach((element) => { element.setAttribute('style', 'display: none !important'); });
+				document.querySelectorAll('.swiftink-authed-only').forEach((element) => { element.setAttribute('style', 'display: block !important'); });
+			}
 			return;
 		});
 
@@ -228,7 +241,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Transcription engine')
 			.setDesc('The transcription engine to use')
-			.setTooltip('Swiftink.io is a cloud based transcription engine (no local set up, additional AI features). Whisper ASR is a self-hosted local transcription engine that uses the Whisper ASR python app. (requires local setup)')
+			.setTooltip('Swiftink.io is a free cloud based transcription engine (no local set up, additional AI features). Whisper ASR is a self-hosted local transcription engine that uses a Python app (requires local setup).')
 			.setClass('transcription-engine-setting')
 			.addDropdown(dropdown => dropdown
 				.addOption('swiftink', 'Swiftink')
@@ -270,17 +283,36 @@ class TranscriptionSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setClass('swiftink-settings')
-			.setName('Sign in to Swiftink.io')
+			.setName('Swiftink.io Account')
 			.addButton((bt) => {
 				bt.setButtonText('Sign in with Google');
+				bt.setClass('swiftink-unauthed-only')
 				bt.onClick(async () => {
 					this.plugin.supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: 'obsidian://swiftink_auth' } })
 				});
 			})
 			.addButton((bt) => {
 				bt.setButtonText('Sign in with GitHub');
+				bt.setClass('swiftink-unauthed-only')
 				bt.onClick(async () => {
 					this.plugin.supabase.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: 'obsidian://swiftink_auth' } })
+				});
+			})
+			.addButton((bt) => {
+				bt.setButtonText('Log out');
+				bt.setClass('swiftink-authed-only')
+				bt.onClick(async () => {
+					await this.plugin.supabase.auth.signOut();
+					this.plugin.user = null;
+					containerEl.findAll('.swiftink-unauthed-only').forEach((element) => { element.style.display = 'block'; });
+					containerEl.findAll('.swiftink-authed-only').forEach((element) => { element.style.display = 'none'; });
+				});
+			})
+			.addButton((bt) => {
+				bt.setButtonText(`Manage ${this.plugin.user?.email}`);
+				bt.setClass('swiftink-authed-only')
+				bt.onClick(() => {
+					window.open('https://swiftink.io/home/account', '_blank');
 				});
 			});
 
@@ -361,6 +393,16 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		else if (this.plugin.settings.transcription_engine == 'whisper_asr') {
 			containerEl.findAll('.swiftink-settings').forEach((element) => { element.style.display = 'none'; });
 			containerEl.findAll('.whisper-asr-settings').forEach((element) => { element.style.display = 'block'; });
+		}
+
+		// Initially hide the settings for user auth/unauth based on whether the user is signed in
+		if (this.plugin.user == null) {
+			containerEl.findAll('.swiftink-unauthed-only').forEach((element) => { element.style.display = 'block'; });
+			containerEl.findAll('.swiftink-authed-only').forEach((element) => { element.style.display = 'none'; });
+		}
+		else {
+			containerEl.findAll('.swiftink-unauthed-only').forEach((element) => { element.style.display = 'none'; });
+			containerEl.findAll('.swiftink-authed-only').forEach((element) => { element.style.display = 'block'; });
 		}
 
 		// If debug mode is off, hide the dev mode setting
