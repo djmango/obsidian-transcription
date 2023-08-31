@@ -1,6 +1,6 @@
 import { ChildProcess } from 'child_process';
 import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TFile, Notice, Platform } from 'obsidian';
-import { TranscriptionEngine } from 'src/transcribe';
+import { TranscriptionEngine } from './transcribe';
 import { StatusBar } from './status';
 import { createClient, User } from "@supabase/supabase-js"
 

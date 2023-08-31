@@ -4,7 +4,6 @@ import { format } from "date-fns";
 import { paths, components } from "./types/swiftink";
 import { payloadGenerator, PayloadData } from "src/utils";
 import { StatusBar } from "./status";
-import axios from "axios";
 import { SupabaseClient } from "@supabase/supabase-js";
 import * as tus from "tus-js-client";
 
@@ -166,16 +165,34 @@ export class TranscriptionEngine {
 			url: fileUrl,
 		}
 
-		const transcript_create_res = await axios.post(url, body, { headers: headers })
-		let transcript: components['schemas']['TranscriptSchema'] = transcript_create_res.data
+		const options: RequestUrlParam = {
+			method: 'POST',
+			url: url,
+			headers: headers,
+			body: JSON.stringify(body)
+		};
+
+		const transcript_create_res = await requestUrl(options);
+
+		// const transcript_create_res = await axios.post(url, body, { headers: headers })
+
+		// let transcript: components['schemas']['TranscriptSchema'] = transcript_create_res.data
+		let transcript: components['schemas']['TranscriptSchema'] = transcript_create_res.json
 		if (this.settings.debug) console.log(transcript);
 
 		// Poll the API until the transcription is complete
 		return new Promise((resolve, reject) => {
 			let tries = 0
 			const poll = setInterval(async () => {
-				const transcript_res = await axios.get(`${api_base}/transcripts/${transcript.id}`, { headers: headers })
-				transcript = transcript_res.data
+				// const transcript_res = await axios.get(`${api_base}/transcripts/${transcript.id}`, { headers: headers })
+				// transcript = transcript_res.data
+				const options: RequestUrlParam = {
+					method: 'GET',
+					url: `${api_base}/transcripts/${transcript.id}`,
+					headers: headers
+				}
+				const transcript_res = await requestUrl(options);
+				transcript = transcript_res.json;
 				console.log(transcript)
 				if (transcript.status === 'transcribed' || transcript.status === 'completed') {
 					clearInterval(poll)

@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-transcription",
-	"version": "3.0.2",
+	"version": "3.0.3",
 	"description": "Obsidian plugin to create high-quality text transcriptions from any media file, on any device",
 	"main": "main.js",
 	"scripts": {
@@ -44,7 +44,6 @@
 	},
 	"dependencies": {
 		"@supabase/supabase-js": "^2.33.1",
-		"axios": "^1.5.0",
 		"date-fns": "^2.29.3",
 		"tus-js-client": "^3.1.1"
 	}
