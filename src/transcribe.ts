@@ -100,10 +100,8 @@ export class TranscriptionEngine {
 
 	async getTranscriptionSwiftink(file: TFile): Promise<string> {
 		// Declare constants for the API
-		let api_base: string
-		if (this.settings.dev) api_base = 'http://localhost:8000'
-		// if (this.settings.dev) api_base = 'https://api.swiftink.io'
-		else api_base = 'https://api.swiftink.io'
+		// const api_base = 'http://localhost:8000'
+		const api_base = 'https://api.swiftink.io'
 
 		const token = await this.supabase.auth.getSession().then((res) => { return res.data?.session?.access_token });
 		const id = await this.supabase.auth.getSession().then((res) => { return res.data?.session?.user?.id });
@@ -174,8 +172,6 @@ export class TranscriptionEngine {
 
 		const transcript_create_res = await requestUrl(options);
 
-		// const transcript_create_res = await axios.post(url, body, { headers: headers })
-
 		// let transcript: components['schemas']['TranscriptSchema'] = transcript_create_res.data
 		let transcript: components['schemas']['TranscriptSchema'] = transcript_create_res.json
 		if (this.settings.debug) console.log(transcript);
@@ -184,8 +180,6 @@ export class TranscriptionEngine {
 		return new Promise((resolve, reject) => {
 			let tries = 0
 			const poll = setInterval(async () => {
-				// const transcript_res = await axios.get(`${api_base}/transcripts/${transcript.id}`, { headers: headers })
-				// transcript = transcript_res.data
 				const options: RequestUrlParam = {
 					method: 'GET',
 					url: `${api_base}/transcripts/${transcript.id}`,
@@ -193,7 +187,7 @@ export class TranscriptionEngine {
 				}
 				const transcript_res = await requestUrl(options);
 				transcript = transcript_res.json;
-				console.log(transcript)
+				if (this.settings.debug) console.log(transcript);
 				if (transcript.status === 'transcribed' || transcript.status === 'completed') {
 					clearInterval(poll)
 					new Notice(`Successfully transcribed ${filename} with Swiftink`);

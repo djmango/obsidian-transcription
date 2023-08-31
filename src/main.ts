@@ -11,7 +11,6 @@ interface TranscriptionSettings {
 	verbosity: number;
 	whisperASRUrl: string;
 	debug: boolean;
-	dev: boolean;
 	transcription_engine: string
 }
 
@@ -22,7 +21,6 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 	verbosity: 1,
 	whisperASRUrl: 'http://localhost:9000',
 	debug: false,
-	dev: false,
 	transcription_engine: 'swiftink'
 }
 
@@ -59,10 +57,13 @@ export default class Transcription extends Plugin {
 		if (
 			this.settings.transcription_engine == 'swiftink' &&
 			(await this.supabase.auth.getSession().then((res) => { return res.data.session == null }))) {
-			new Notice('Please sign in to Swiftink.io via the settings tab', 4000);
+			new Notice('Transcription: Please sign in to Swiftink.io via the settings tab', 4000);
 		}
 		else if (this.settings.transcription_engine == 'swiftink') {
 			this.user = await this.supabase.auth.getUser().then((res) => { return res.data.user || null });
+			if (this.user == null) {
+				new Notice('Transcription: Please sign in to Swiftink.io via the settings tab', 4000);
+			}
 		}
 
 		if (!Platform.isMobileApp) {
@@ -92,8 +93,10 @@ export default class Transcription extends Plugin {
 				await this.app.vault.modify(parent_file, fileText);
 
 			}).catch((error) => {
-				if (this.settings.debug) new Notice('Error transcribing file ' + file.name + ': ' + error);
-				else if (this.settings.dev) throw error;
+				if (this.settings.debug) {
+					new Notice('Error transcribing file ' + file.name + ': ' + error);
+					console.log(error);
+				}
 				else new Notice('Error transcribing file, enable debug mode to see more');
 			});
 		}
@@ -184,7 +187,7 @@ export default class Transcription extends Plugin {
 			const refresh_token = params.get('refresh_token');
 
 			if (!access_token || !refresh_token) {
-				new Notice('Error authenticating with Swiftink.io');
+				new Notice('Transcription: Error authenticating with Swiftink.io');
 				return;
 			}
 
@@ -373,19 +376,6 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.debug)
 				.onChange(async (value) => {
 					this.plugin.settings.debug = value;
-					// If this is toggled off, also turn off dev mode
-					if (!value) this.plugin.settings.dev = false;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName('Dev mode')
-			.setDesc('Enable dev mode to use the dev version of the plugin - only use this if you\'re a beta tester or developer, email sulaiman@swiftink.io for more info')
-			.setClass('dev-mode')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.dev)
-				.onChange(async (value) => {
-					this.plugin.settings.dev = value;
 					await this.plugin.saveSettings();
 				}));
 
