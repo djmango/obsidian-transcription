@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-transcription",
 	"name": "Transcription",
-	"version": "3.0.4",
+	"version": "3.0.5",
 	"minAppVersion": "0.15.0",
 	"description": "Transcription 3.0, now with Swiftink.io domain-aware speech-to-text! Create high-quality text transcriptions from any media file, on any device. Best-in-class ASR",
 	"author": "djmango",

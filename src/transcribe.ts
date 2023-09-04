@@ -188,7 +188,7 @@ export class TranscriptionEngine {
 				const transcript_res = await requestUrl(options);
 				transcript = transcript_res.json;
 				if (this.settings.debug) console.log(transcript);
-				if (transcript.status === 'transcribed' || transcript.status === 'completed') {
+				if (transcript.status === 'transcribed' || transcript.status === 'complete') {
 					clearInterval(poll)
 					new Notice(`Successfully transcribed ${filename} with Swiftink`);
 					if (this.settings.timestamps) resolve(this.segmentsToTimestampedString(transcript.text_segments, this.settings.timestampFormat));
