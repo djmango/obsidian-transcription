@@ -9,6 +9,7 @@ interface TranscriptionSettings {
 	whisperASRUrl: string;
 	debug: boolean;
 	transcription_engine: string;
+	linkAdditionalFunctionality: boolean;
 }
 
 const DEFAULT_SETTINGS: TranscriptionSettings = {
@@ -19,6 +20,7 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 	whisperASRUrl: "http://localhost:9000",
 	debug: false,
 	transcription_engine: "swiftink",
+	linkAdditionalFunctionality: true,
 };
 
 class TranscriptionSettingTab extends PluginSettingTab {
@@ -44,7 +46,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 			.setName("Transcription engine")
 			.setDesc("The transcription engine to use")
 			.setTooltip(
-				"Swiftink.io is a free cloud based transcription engine (no local set up, additional AI features). Whisper ASR is a self-hosted local transcription engine that uses a Python app (requires local setup).",
+				"Swiftink is a free cloud based transcription engine (no local set up, additional AI features). Whisper ASR is a self-hosted local transcription engine that uses a Python app (requires local setup).",
 			)
 			.setClass("transcription-engine-setting")
 			.addDropdown((dropdown) =>
@@ -107,7 +109,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setClass("swiftink-settings")
-			.setName("Swiftink.io Account")
+			.setName("Swiftink Account")
 			.addButton((bt) => {
 				bt.setButtonText("Sign in with Google");
 				bt.setClass("swiftink-unauthed-only");
@@ -186,6 +188,23 @@ class TranscriptionSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
+			.setName("Link additional functionality")
+			.setDesc("Link additional functionality to the transcripts")
+			.setTooltip(
+				"Note: If you disable this, you will not be able to import your additional transcript data or view the transcript on the Swiftink.io from within Obsidian.",
+			)
+			.setClass("swiftink-settings")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.linkAdditionalFunctionality)
+					.onChange(async (value) => {
+						this.plugin.settings.linkAdditionalFunctionality =
+							value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
 			.setName("Whisper ASR Settings")
 			.setClass("whisper-asr-settings")
 			.setHeading();
@@ -219,6 +238,38 @@ class TranscriptionSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}),
 			);
+
+		// Swiftnk.io links
+		containerEl.createEl("hr");
+
+		const logoLink = containerEl.createEl("a");
+		logoLink.href = "https://www.swiftink.io";
+		logoLink.style.display = "block";
+		logoLink.style.marginLeft = "auto";
+		logoLink.style.marginRight = "auto";
+		logoLink.style.width = "30%";
+
+		const logo = logoLink.createEl("img");
+		logo.src = "https://www.swiftink.io/assets/svg/logos/swiftink.svg";
+		logo.alt = "Swiftink Logo";
+		logo.style.display = "block";
+		logo.style.width = "100%";
+
+		const help = containerEl.createEl("p");
+		help.classList.add("swiftink-settings");
+		help.innerHTML =
+			"Questions? Please see our <a href='https://www.swiftink.io/docs'>Documentation</a> or email us at <a href='mailto:support@swiftnk.io'>support@swiftink.io</a> 🙂";
+		help.style.textAlign = "center";
+		help.style.fontSize = "0.85em";
+
+		const disclaimer = containerEl.createEl("p");
+		disclaimer.classList.add("swiftink-settings");
+		disclaimer.innerHTML =
+			"By proceeding you agree to our <a href='https://www.swiftink.io/terms'>Terms of Service</a> and <a href='https://www.swiftink.io/privacy'>Privacy Policy</a>.";
+		disclaimer.style.textAlign = "center";
+		disclaimer.style.fontSize = "0.85em";
+
+		// Logic! (the incredible true story)
 
 		// Initially hide the settings for the other transcription engine
 		if (this.plugin.settings.transcription_engine == "swiftink") {

@@ -64,8 +64,13 @@ export default class Transcription extends Plugin {
 		Transcription.plugin = this;
 		console.log("Loading Obsidian Transcription");
 		if (this.settings.debug) console.log("Debug mode enabled");
-		if (this.settings.debug)
-			console.log(await this.supabase.auth.getSession());
+
+		this.transcription_engine = new TranscriptionEngine(
+			this.settings,
+			this.app.vault,
+			this.statusBar,
+			this.supabase,
+		);
 
 		// Prompt the user to sign in if the have Swiftink selected and are not signed in
 		if (
@@ -97,12 +102,47 @@ export default class Transcription extends Plugin {
 			);
 		}
 
-		this.transcription_engine = new TranscriptionEngine(
-			this.settings,
-			this.app.vault,
-			this.statusBar,
-			this.supabase,
-		);
+		const getTranscribeableFiles = (file: TFile) => {
+			// Get all linked files in the markdown file
+			const filesLinked = Object.keys(
+				this.app.metadataCache.resolvedLinks[file.path],
+			);
+
+			// Now that we have all the files linked in the markdown file, we need to filter them by the file extensions we want to transcribe
+			const filesToTranscribe: TFile[] = [];
+			for (const linkedFilePath of filesLinked) {
+				const linkedFileExtension = linkedFilePath.split(".").pop();
+				if (
+					linkedFileExtension === undefined ||
+					!Transcription.transcribeFileExtensions.includes(
+						linkedFileExtension.toLowerCase(),
+					)
+				) {
+					if (this.settings.debug)
+						console.log(
+							"Skipping " +
+								linkedFilePath +
+								" because the file extension is not in the list of transcribeable file extensions",
+						);
+					continue;
+				}
+
+				// We now know that the file extension is in the list of transcribeable file extensions
+				const linkedFile =
+					this.app.vault.getAbstractFileByPath(linkedFilePath);
+
+				// Validate that we are dealing with a file and add it to the list of verified files to transcribe
+				if (linkedFile instanceof TFile)
+					filesToTranscribe.push(linkedFile);
+				else {
+					if (this.settings.debug)
+						console.log("Could not find file " + linkedFilePath);
+					continue;
+				}
+			}
+			return filesToTranscribe;
+		};
+
 		const transcribeAndWrite = async (parent_file: TFile, file: TFile) => {
 			if (this.settings.debug) console.log("Transcribing " + file.path);
 			// Check if view has file
@@ -117,12 +157,12 @@ export default class Transcription extends Plugin {
 							parent_file.path,
 						); // This is the string that is used to link the audio file in the markdown file. If files are moved this potentially breaks, but Obsidian has built-in handlers for this, and handling that is outside the scope of this plugin
 					const fileLinkStringTagged = `[[${fileLinkString}]]`; // This is the string that is used to link the audio file in the markdown file.
-					console.log(fileLinkString);
 
 					// Perform a string replacement, add the transcription to the next line after the file link
 					const startReplacementIndex =
 						fileText.indexOf(fileLinkStringTagged) +
 						fileLinkStringTagged.length;
+
 					fileText = [
 						fileText.slice(0, startReplacementIndex),
 						`\n${transcription}`,
@@ -139,87 +179,25 @@ export default class Transcription extends Plugin {
 							"You have exceeded the free tier. Please upgrade to a paid plan at swiftink.io/pricing to continue transcribing files. Thanks for using Swiftink!",
 							10000,
 						);
-					} else if (this.settings.debug) {
-						new Notice(
-							"Error transcribing file " +
-								file.name +
-								": " +
-								error,
-						);
-						console.log(error);
-					} else
-						new Notice(
-							"Error transcribing file, enable debug mode to see more",
-						);
+					} else {
+						if (this.settings.debug) console.log(error);
+						new Notice(`Error transcribing file: ${error.message}`);
+					}
 				});
 		};
 
 		this.addCommand({
 			id: "obsidian-transcription-transcribe-all-in-view",
-			name: "Transcribe all audio files in view",
+			name: "Transcribe all files in view",
 			editorCallback: async (editor: Editor, view: MarkdownView) => {
-				// Get the current filepath
-				const markdownFilePath = view.file?.path;
-				if (markdownFilePath === undefined) {
-					if (this.settings.debug)
-						console.log("Could not get markdown file path");
-					return;
-				}
-				if (this.settings.debug)
-					console.log(
-						"Transcribing all audio files in " + markdownFilePath,
-					);
+				if (view.file === null) return;
+				const filesToTranscribe = getTranscribeableFiles(view.file);
 				new Notice(
-					"Transcribing all audio files in " + view.file?.name,
+					"Transcribing all audio files in " + view.file.name,
 					3000,
 				);
 
-				// Get all linked files in the markdown file
-				const filesLinked = Object.keys(
-					this.app.metadataCache.resolvedLinks[markdownFilePath],
-				);
-
-				// Now that we have all the files linked in the markdown file, we need to filter them by the file extensions we want to transcribe
-				const filesToTranscribe: TFile[] = [];
-				for (const linkedFilePath of filesLinked) {
-					const linkedFileExtension = linkedFilePath.split(".").pop();
-					if (
-						linkedFileExtension === undefined ||
-						!Transcription.transcribeFileExtensions.includes(
-							linkedFileExtension.toLowerCase(),
-						)
-					) {
-						if (this.settings.debug)
-							console.log(
-								"Skipping " +
-									linkedFilePath +
-									" because the file extension is not in the list of transcribeable file extensions",
-							);
-						continue;
-					}
-
-					// We now know that the file extension is in the list of transcribeable file extensions
-					const linkedFile =
-						this.app.vault.getAbstractFileByPath(linkedFilePath);
-
-					// Validate that we are dealing with a file and add it to the list of verified files to transcribe
-					if (linkedFile instanceof TFile)
-						filesToTranscribe.push(linkedFile);
-					else {
-						if (this.settings.debug)
-							console.log(
-								"Could not find file " + linkedFilePath,
-							);
-						continue;
-					}
-				}
-
 				// Now that we have all the files to transcribe, we can transcribe them
-				if (view.file === null) {
-					if (this.settings.debug)
-						console.error("Could not get markdown file path");
-					return;
-				}
 				for (const fileToTranscribe of filesToTranscribe) {
 					transcribeAndWrite(view.file, fileToTranscribe);
 				}
@@ -228,55 +206,11 @@ export default class Transcription extends Plugin {
 
 		this.addCommand({
 			id: "obsidian-transcription-transcribe-specific-file-in-view",
-			name: "Transcribe specific file in view",
+			name: "Transcribe file in view",
 			editorCallback: async (editor: Editor, view: MarkdownView) => {
 				// Get the current filepath
-				const markdownFilePath = view.file?.path;
-				if (markdownFilePath === undefined) {
-					if (this.settings.debug)
-						console.log("Could not get markdown file path");
-					return;
-				}
-
-				// Get all linked files in the markdown file
-				const filesLinked = Object.keys(
-					this.app.metadataCache.resolvedLinks[markdownFilePath],
-				);
-
-				// Now that we have all the files linked in the markdown file, we need to filter them by the file extensions we want to transcribe
-				const filesToTranscribe: TFile[] = [];
-				for (const linkedFilePath of filesLinked) {
-					const linkedFileExtension = linkedFilePath.split(".").pop();
-					if (
-						linkedFileExtension === undefined ||
-						!Transcription.transcribeFileExtensions.includes(
-							linkedFileExtension.toLowerCase(),
-						)
-					) {
-						if (this.settings.debug)
-							console.log(
-								"Skipping " +
-									linkedFilePath +
-									" because the file extension is not in the list of transcribeable file extensions",
-							);
-						continue;
-					}
-
-					// We now know that the file extension is in the list of transcribeable file extensions
-					const linkedFile =
-						this.app.vault.getAbstractFileByPath(linkedFilePath);
-
-					// Validate that we are dealing with a file and add it to the list of verified files to transcribe
-					if (linkedFile instanceof TFile)
-						filesToTranscribe.push(linkedFile);
-					else {
-						if (this.settings.debug)
-							console.log(
-								"Could not find file " + linkedFilePath,
-							);
-						continue;
-					}
-				}
+				if (view.file === null) return;
+				const filesToTranscribe = getTranscribeableFiles(view.file);
 
 				// Now that we have all the files to transcribe, we can prompt the user to choose which one they want to transcribe
 
