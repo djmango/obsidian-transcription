@@ -9,7 +9,10 @@ interface TranscriptionSettings {
 	whisperASRUrl: string;
 	debug: boolean;
 	transcription_engine: string;
-	linkAdditionalFunctionality: boolean;
+	embedAdditionalFunctionality: boolean;
+	embedSummary: boolean;
+	embedOutline: boolean;
+	embedKeywords: boolean;
 }
 
 const DEFAULT_SETTINGS: TranscriptionSettings = {
@@ -20,7 +23,10 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 	whisperASRUrl: "http://localhost:9000",
 	debug: false,
 	transcription_engine: "swiftink",
-	linkAdditionalFunctionality: true,
+	embedAdditionalFunctionality: true,
+	embedSummary: true,
+	embedOutline: true,
+	embedKeywords: true,
 };
 
 class TranscriptionSettingTab extends PluginSettingTab {
@@ -154,7 +160,10 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				bt.setClass("swiftink-authed-only");
 				bt.setClass("swiftink-manage-account-btn");
 				bt.onClick(() => {
-					window.open("https://swiftink.io/home/account", "_blank");
+					window.open(
+						"https://swiftink.io/dashboard/account",
+						"_blank",
+					);
 				});
 			});
 
@@ -173,7 +182,9 @@ class TranscriptionSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Timestamp format")
-			.setDesc("The format of the timestamps: date-fns.org/docs/format")
+			.setDesc(
+				"Your choice of hours, minutes, and/or seconds in the timestamp",
+			)
 			.setClass("swiftink-settings")
 			.addDropdown((dropdown) =>
 				dropdown
@@ -188,17 +199,67 @@ class TranscriptionSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("Link additional functionality")
-			.setDesc("Link additional functionality to the transcripts")
+			.setName("Embed summary")
+			.setDesc("Embed the generated transcription summary in the note")
 			.setTooltip(
-				"Note: If you disable this, you will not be able to import your additional transcript data or view the transcript on the Swiftink.io from within Obsidian.",
+				"This will only work if you have a Swiftink Pro account",
 			)
 			.setClass("swiftink-settings")
 			.addToggle((toggle) =>
 				toggle
-					.setValue(this.plugin.settings.linkAdditionalFunctionality)
+					.setValue(this.plugin.settings.embedSummary)
 					.onChange(async (value) => {
-						this.plugin.settings.linkAdditionalFunctionality =
+						this.plugin.settings.embedSummary = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("Embed outline")
+			.setDesc("Embed the generated trancription outline in the note")
+			.setTooltip(
+				"This will only work if you have a Swiftink Pro account",
+			)
+			.setClass("swiftink-settings")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.embedOutline)
+					.onChange(async (value) => {
+						this.plugin.settings.embedOutline = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("Embed keywords")
+			.setDesc("Embed the extracted keywords in the note")
+			.setTooltip(
+				"This will only work if you have a Swiftink Pro account",
+			)
+			.setClass("swiftink-settings")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.embedKeywords)
+					.onChange(async (value) => {
+						this.plugin.settings.embedKeywords = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("Embed function link")
+			.setDesc(
+				"(Recommended) Include an embedded link to the transcript function modal in the transcribed note",
+			)
+			.setTooltip(
+				"If you disable this, you will not be able to import your additional transcript data or view the transcript on the Swiftink.io from within Obsidian.",
+			)
+			.setClass("swiftink-settings")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.embedAdditionalFunctionality)
+					.onChange(async (value) => {
+						this.plugin.settings.embedAdditionalFunctionality =
 							value;
 						await this.plugin.saveSettings();
 					}),
@@ -254,6 +315,11 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		logo.alt = "Swiftink Logo";
 		logo.style.display = "block";
 		logo.style.width = "100%";
+
+		const name = containerEl.createEl("p");
+		name.classList.add("swiftink-settings");
+		name.innerHTML = "Swiftink.io";
+		name.style.textAlign = "center";
 
 		const help = containerEl.createEl("p");
 		help.classList.add("swiftink-settings");

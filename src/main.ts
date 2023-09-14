@@ -145,7 +145,6 @@ export default class Transcription extends Plugin {
 
 		const transcribeAndWrite = async (parent_file: TFile, file: TFile) => {
 			if (this.settings.debug) console.log("Transcribing " + file.path);
-			// Check if view has file
 
 			this.transcription_engine
 				.getTranscription(file)
@@ -223,7 +222,7 @@ export default class Transcription extends Plugin {
 						return file.name;
 					}
 
-					onChooseItem(file: TFile, evt: MouseEvent | KeyboardEvent) {
+					onChooseItem(file: TFile) {
 						if (view.file === null) return;
 						new Notice(`Transcribing ${file.name}`);
 						transcribeAndWrite(view.file, file);
@@ -331,6 +330,46 @@ export default class Transcription extends Plugin {
 						});
 				}
 				return;
+			},
+		);
+
+		this.registerObsidianProtocolHandler(
+			"swiftink_transcript_functions",
+			async (callback) => {
+				const id = callback.id;
+
+				const functions = [
+					"View on Swiftink.io",
+					// "Delete from Swiftink.io",
+					// "Download .txt",
+					// "Download .srt",
+					// "Copy text to clipboard",
+					// "Copy summary to clipboard",
+					// "Copy outline to clipboard",
+					// "Copy keywords to clipboard",
+				];
+
+				class SwiftinkTranscriptFunctionsModal extends FuzzySuggestModal<string> {
+					getItems(): string[] {
+						return functions;
+					}
+
+					getItemText(function_name: string): string {
+						return function_name;
+					}
+
+					onChooseItem(function_name: string) {
+						// new Notice(`Running ${function_name} on ${id}`);
+						if (function_name == "View on Swiftink.io") {
+							window.open(
+								"https://swiftink.io/dashboard/",
+								"_blank",
+							);
+						}
+					}
+				}
+
+				new SwiftinkTranscriptFunctionsModal(this.app).open();
 			},
 		);
 	}

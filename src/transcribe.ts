@@ -1,4 +1,4 @@
-import { TranscriptionSettings } from "src/main";
+import { TranscriptionSettings } from "src/settings";
 import { Notice, requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
 import { format } from "date-fns";
 import { paths, components } from "./types/swiftink";
@@ -224,6 +224,16 @@ export class TranscriptionEngine {
 			transcript_create_res.json;
 		if (this.settings.debug) console.log(transcript);
 
+		let completed_statuses = ["transcribed", "complete"];
+
+		// If the user has any of the embed options enabled, we need to wait for the transcription to complete
+		if (
+			(this.settings.embedSummary || this.settings.embedOutline,
+			this.settings.embedKeywords)
+		) {
+			completed_statuses = ["complete"];
+		}
+
 		// Poll the API until the transcription is complete
 		return new Promise((resolve, reject) => {
 			let tries = 0;
@@ -237,21 +247,14 @@ export class TranscriptionEngine {
 				transcript = transcript_res.json;
 				if (this.settings.debug) console.log(transcript);
 				if (
-					transcript.status === "transcribed" ||
-					transcript.status === "complete"
+					transcript.status &&
+					completed_statuses.contains(transcript.status)
 				) {
 					clearInterval(poll);
 					new Notice(
 						`Successfully transcribed ${filename} with Swiftink`,
 					);
-					if (this.settings.timestamps)
-						resolve(
-							this.segmentsToTimestampedString(
-								transcript.text_segments,
-								this.settings.timestampFormat,
-							),
-						);
-					else resolve(transcript.text ? transcript.text : "");
+					resolve(this.formatSwiftinkResults(transcript));
 				} else if (transcript.status == "failed") {
 					if (this.settings.debug)
 						console.error("Swiftink failed to transcribe the file");
@@ -273,5 +276,57 @@ export class TranscriptionEngine {
 				tries++;
 			}, 3000);
 		});
+	}
+
+	formatSwiftinkResults(
+		transcript: components["schemas"]["TranscriptSchema"],
+	): string {
+		let transcript_text: string = "## Transcript\n";
+
+		// Format the text into a string, the main body of the transcription
+		if (this.settings.timestamps)
+			transcript_text += this.segmentsToTimestampedString(
+				transcript.text_segments,
+				this.settings.timestampFormat,
+			);
+		else transcript_text += transcript.text ? transcript.text : "";
+
+		// Append the summary if the user has enabled it
+		if (
+			this.settings.embedSummary &&
+			transcript.summary &&
+			transcript.summary !== "Insufficient information for a summary."
+		)
+			transcript_text += `## Summary\n${transcript.summary}`;
+
+		// If there isnt a \n at the end of the output add one
+		if (transcript_text.slice(-1) !== "\n") transcript_text += "\n";
+
+		// Append the outline if the user has enabled it
+		if (
+			this.settings.embedOutline &&
+			transcript.heading_segments.length > 0
+		)
+			transcript_text += `## Outline\n${this.segmentsToTimestampedString(
+				transcript.heading_segments,
+				this.settings.timestampFormat,
+			)}`;
+
+		// If there isnt a \n at the end of the output add one
+		if (transcript_text.slice(-1) !== "\n") transcript_text += "\n";
+
+		// Append the keywords if the user has enabled it
+		if (this.settings.embedKeywords && transcript.keywords.length > 0)
+			transcript_text += `## Keywords\n${transcript.keywords.join(", ")}`;
+
+		// If there isnt a \n at the end of the output add one
+		if (transcript_text.slice(-1) !== "\n") transcript_text += "\n";
+
+		// Append a link to the Swiftink transcript if the user has enabled it
+		if (this.settings.embedAdditionalFunctionality) {
+			transcript_text += `[...](obsidian://swiftink_transcript_functions?id=${transcript.id})`;
+		}
+
+		return transcript_text;
 	}
 }

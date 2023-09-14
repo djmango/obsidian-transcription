@@ -5,10 +5,6 @@
 
 
 export interface paths {
-  "/hello": {
-    /** Hello */
-    get: operations["swiftink_api_api_hello"];
-  };
   "/status": {
     /** Status */
     get: operations["swiftink_api_api_status"];
@@ -25,6 +21,13 @@ export interface paths {
     get: operations["swiftink_api_routers_transcript_transcript_router_get_transcripts"];
     /** Create Transcription */
     post: operations["swiftink_api_routers_transcript_transcript_router_create_transcription"];
+  };
+  "/transcripts/{id}/validate": {
+    /**
+     * Get Transcript Validate
+     * @description Get the details of a specific transcript by id
+     */
+    get: operations["swiftink_api_routers_transcript_transcript_router_get_transcript_validate"];
   };
   "/transcripts/{id}": {
     /**
@@ -147,6 +150,26 @@ export interface components {
        */
       text: string;
     };
+    /**
+     * TranscriptStatus
+     * @description Transcript status
+     * @enum {string}
+     */
+    TranscriptStatus: "pending" | "uploaded" | "validating" | "validated" | "transcribing" | "transcribed" | "complete" | "validation_failed" | "failed";
+    /**
+     * TranscriptLanguage
+     * @description ISO 639-1 language codes
+     * @enum {string}
+     */
+    TranscriptLanguage: "af" | "am" | "ar" | "as" | "az" | "ba" | "be" | "bg" | "bn" | "bo" | "br" | "bs" | "ca" | "cs" | "cy" | "da" | "de" | "el" | "en" | "es" | "et" | "eu" | "fa" | "fi" | "fo" | "fr" | "gl" | "gu" | "ha" | "haw" | "hi" | "hr" | "ht" | "hu" | "hy" | "id" | "is" | "it" | "iw" | "ja" | "jw" | "ka" | "kk" | "km" | "kn" | "ko" | "la" | "lb" | "ln" | "lo" | "lt" | "lv" | "mg" | "mi" | "mk" | "ml" | "mn" | "mr" | "ms" | "mt" | "my" | "ne" | "nl" | "nn" | "no" | "oc" | "pa" | "pl" | "ps" | "pt" | "ro" | "ru" | "sa" | "sd" | "si" | "sk" | "sl" | "sn" | "so" | "sq" | "sr" | "su" | "sv" | "sw" | "ta" | "te" | "tg" | "th" | "tk" | "tl" | "tr" | "tt" | "uk" | "ur" | "uz" | "vi" | "yi" | "yo" | "zh";
+    /** WebhookSchema */
+    WebhookSchema: {
+      /**
+       * Url
+       * @description The URL to POST the JSON transcript to on completion
+       */
+      url: string;
+    };
     /** TranscriptSchema */
     TranscriptSchema: {
       /**
@@ -172,12 +195,6 @@ export interface components {
        * @description Name of the transcript
        */
       name?: string;
-      /**
-       * Status
-       * @description Current status of the transcript
-       * @default pending
-       */
-      status?: string;
       /**
        * Validated
        * @description Whether the file has been validated
@@ -208,30 +225,15 @@ export interface components {
        */
       url?: string;
       /**
-       * Webhooks
-       * @description Webhooks to call when the transcript is updated, a JSON object with key "url" mapped to the http/https URL of the endpoint to POST the JSON transcript to on completion
-       */
-      webhooks?: Record<string, never>;
-      /**
        * File Mimetype
        * @description Mimetype of file
        */
       file_mimetype?: string;
       /**
-       * File Extension
-       * @description File extension
-       */
-      file_extension?: string;
-      /**
        * Duration Seconds
        * @description Duration of the file in seconds
        */
       duration_seconds?: number;
-      /**
-       * Language
-       * @description Language of the transcript, in ISO 639-1
-       */
-      language?: string;
       /**
        * Text Segments
        * @description List of text segments with timestamps
@@ -257,14 +259,20 @@ export interface components {
        * Format: uuid
        */
       user_id: string;
-    };
-    /** WebhookSchema */
-    WebhookSchema: {
+      /** @description Transcript status */
+      status: components["schemas"]["TranscriptStatus"];
+      /** @description Detected language of the transcript in standard ISO 639-1 */
+      language: components["schemas"]["TranscriptLanguage"];
       /**
-       * Url
-       * @description The URL to POST the JSON transcript to on completion
+       * Webhooks
+       * @description List of webhooks hit with POST on completion of the transcript
        */
-      url: string;
+      webhooks: components["schemas"]["WebhookSchema"][];
+      /**
+       * Keywords
+       * @description List of keywords generated from the transcript
+       */
+      keywords: string[];
     };
     /** CreateTranscriptionRequest */
     CreateTranscriptionRequest: {
@@ -405,6 +413,12 @@ export interface components {
        */
       url: string;
     };
+    /**
+     * SwiftinkSubscriptionTiers
+     * @description An enumeration.
+     * @enum {string}
+     */
+    SwiftinkSubscriptionTiers: "free" | "individual" | "professional" | "business";
     /** ProfileSchema */
     ProfileSchema: {
       /** Name */
@@ -428,6 +442,7 @@ export interface components {
        * Format: uuid
        */
       user_id: string;
+      subscription_tier: components["schemas"]["SwiftinkSubscriptionTiers"];
     };
     /** CreateUserRequest */
     CreateUserRequest: {
@@ -465,15 +480,6 @@ export type external = Record<string, never>;
 
 export interface operations {
 
-  /** Hello */
-  swiftink_api_api_hello: {
-    responses: {
-      /** @description OK */
-      200: {
-        content: never;
-      };
-    };
-  };
   /** Status */
   swiftink_api_api_status: {
     responses: {
@@ -545,6 +551,37 @@ export interface operations {
             [key: string]: string;
           };
         };
+      };
+    };
+  };
+  /**
+   * Get Transcript Validate
+   * @description Get the details of a specific transcript by id
+   */
+  swiftink_api_routers_transcript_transcript_router_get_transcript_validate: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": boolean;
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        content: {
+          "application/json": {
+            [key: string]: string;
+          };
+        };
+      };
+      /** @description Not Found */
+      404: {
+        content: never;
       };
     };
   };
