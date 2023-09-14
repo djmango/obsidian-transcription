@@ -337,6 +337,7 @@ export default class Transcription extends Plugin {
 			"swiftink_transcript_functions",
 			async (callback) => {
 				const id = callback.id;
+				console.log(id);
 
 				const functions = [
 					"View on Swiftink.io",
