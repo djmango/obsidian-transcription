@@ -291,6 +291,8 @@ export class TranscriptionEngine {
 			);
 		else transcript_text += transcript.text ? transcript.text : "";
 
+		if (transcript_text.slice(-1) !== "\n") transcript_text += "\n";
+
 		// Append the summary if the user has enabled it
 		if (
 			this.settings.embedSummary &&
