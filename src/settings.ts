@@ -117,6 +117,17 @@ class TranscriptionSettingTab extends PluginSettingTab {
 			.setClass("swiftink-settings")
 			.setName("Swiftink Account")
 			.addButton((bt) => {
+				bt.setButtonText("Sign in with Email");
+				bt.setClass("swiftink-unauthed-only");
+				bt.onClick(async () => {
+					window.open(
+						"https://swiftink.io/login/?callback=obsidian://swiftink_auth",
+						// "http://localhost:4200/login/?callback=obsidian://swiftink_auth",
+						"_blank",
+					);
+				});
+			})
+			.addButton((bt) => {
 				bt.setButtonText("Sign in with Google");
 				bt.setClass("swiftink-unauthed-only");
 				bt.onClick(async () => {
@@ -311,7 +322,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		logoLink.style.width = "30%";
 
 		const logo = logoLink.createEl("img");
-		logo.src = "https://www.swiftink.io/assets/svg/logos/swiftink.svg";
+		logo.src = "https://www.swiftink.io/assets/img/logos/swiftink.svg";
 		logo.alt = "Swiftink Logo";
 		logo.style.display = "block";
 		logo.style.width = "100%";
@@ -371,17 +382,6 @@ class TranscriptionSettingTab extends PluginSettingTab {
 					element.style.display = "none";
 				});
 			containerEl.findAll(".swiftink-authed-only").forEach((element) => {
-				element.style.display = "block";
-			});
-		}
-
-		// If debug mode is off, hide the dev mode setting
-		if (!this.plugin.settings.debug) {
-			containerEl.findAll(".dev-mode").forEach((element) => {
-				element.style.display = "none";
-			});
-		} else {
-			containerEl.findAll(".dev-mode").forEach((element) => {
 				element.style.display = "block";
 			});
 		}
