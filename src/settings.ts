@@ -29,6 +29,10 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 	embedKeywords: true,
 };
 
+const SWIFTINK_AUTH_CALLBACK =
+	"https://swiftink.io/login/?callback=obsidian://swiftink_auth";
+// "http://localhost:4200/login/?callback=obsidian://swiftink_auth",
+
 class TranscriptionSettingTab extends PluginSettingTab {
 	plugin: Transcription;
 
@@ -120,11 +124,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				bt.setButtonText("Sign in with Email");
 				bt.setClass("swiftink-unauthed-only");
 				bt.onClick(async () => {
-					window.open(
-						"https://swiftink.io/login/?callback=obsidian://swiftink_auth",
-						// "http://localhost:4200/login/?callback=obsidian://swiftink_auth",
-						"_blank",
-					);
+					window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
 				});
 			})
 			.addButton((bt) => {
@@ -389,4 +389,4 @@ class TranscriptionSettingTab extends PluginSettingTab {
 }
 
 export type { TranscriptionSettings };
-export { DEFAULT_SETTINGS, TranscriptionSettingTab };
+export { DEFAULT_SETTINGS, SWIFTINK_AUTH_CALLBACK, TranscriptionSettingTab };

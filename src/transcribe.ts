@@ -1,4 +1,4 @@
-import { TranscriptionSettings } from "src/settings";
+import { TranscriptionSettings, SWIFTINK_AUTH_CALLBACK } from "src/settings";
 import { Notice, requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
 import { format } from "date-fns";
 import { paths, components } from "./types/swiftink";
@@ -127,14 +127,19 @@ export class TranscriptionEngine {
 		// const api_base = 'http://localhost:8000'
 		const api_base = "https://api.swiftink.io";
 
-		const token = await this.supabase.auth.getSession().then((res) => {
-			return res.data?.session?.access_token;
+		const session = await this.supabase.auth.getSession().then((res) => {
+			return res.data;
 		});
-		const id = await this.supabase.auth.getSession().then((res) => {
-			return res.data?.session?.user?.id;
-		});
-		if (token === undefined) return Promise.reject("No token found");
-		if (id === undefined) return Promise.reject("No user id found");
+
+		if (session == null || session.session == null) {
+			window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
+			return Promise.reject(
+				"No user session found. Please log in and try again.",
+			);
+		}
+
+		const token = session.session.access_token;
+		const id = session.session.user.id;
 
 		const fileStream = await this.vault.readBinary(file);
 		const filename = file.name.replace(/[^a-zA-Z0-9.]+/g, "-");
