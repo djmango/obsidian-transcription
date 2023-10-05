@@ -123,6 +123,11 @@ const LANGUAGES = {
 	THAI: "th",
 };
 
+const SWIFTINK_AUTH_CALLBACK =
+	"https://swiftink.io/login/?callback=obsidian://swiftink_auth";
+// "http://localhost:4200/login/?callback=obsidian://swiftink_auth",
+
+
 class TranscriptionSettingTab extends PluginSettingTab {
 	plugin: Transcription;
 
@@ -499,4 +504,4 @@ class TranscriptionSettingTab extends PluginSettingTab {
 }
 
 export type { TranscriptionSettings };
-export { DEFAULT_SETTINGS, TranscriptionSettingTab, SWIFTINK_AUTH_CALLBACK };
+export { DEFAULT_SETTINGS, SWIFTINK_AUTH_CALLBACK, TranscriptionSettingTab };

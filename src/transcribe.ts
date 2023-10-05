@@ -134,6 +134,7 @@ export class TranscriptionEngine {
 		const session = await this.supabase.auth.getSession().then((res) => {
 			return res.data;
 		});
+
 		if (session == null || session.session == null) {
 			window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
 			return Promise.reject(
