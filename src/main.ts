@@ -173,14 +173,18 @@ export default class Transcription extends Plugin {
 				})
 				.catch((error) => {
 					// First check if 402 is in the error message, if so alert the user that they need to pay
-					if (error && error.message.includes("402")) {
+					if (
+						error &&
+						error.message &&
+						error.message.includes("402")
+					) {
 						new Notice(
 							"You have exceeded the free tier. Please upgrade to a paid plan at swiftink.io/pricing to continue transcribing files. Thanks for using Swiftink!",
 							10000,
 						);
 					} else {
 						if (this.settings.debug) console.log(error);
-						new Notice(`Error transcribing file: ${error.message}`);
+						new Notice(`Error transcribing file: ${error}`);
 					}
 				});
 		};

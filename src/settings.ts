@@ -5,6 +5,7 @@ interface TranscriptionSettings {
 	timestamps: boolean;
 	timestampFormat: string;
 	translate: boolean;
+	language: string;
 	verbosity: number;
 	whisperASRUrl: string;
 	debug: boolean;
@@ -15,10 +16,14 @@ interface TranscriptionSettings {
 	embedKeywords: boolean;
 }
 
+const SWIFTINK_AUTH_CALLBACK =
+	"https://swiftink.io/login/?callback=obsidian://swiftink_auth";
+
 const DEFAULT_SETTINGS: TranscriptionSettings = {
 	timestamps: false,
 	timestampFormat: "HH:mm:ss",
 	translate: false,
+	language: "auto",
 	verbosity: 1,
 	whisperASRUrl: "http://localhost:9000",
 	debug: false,
@@ -27,6 +32,95 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 	embedSummary: true,
 	embedOutline: true,
 	embedKeywords: true,
+};
+
+const LANGUAGES = {
+	AFRIKAANS: "af",
+	ALBANIAN: "sq",
+	AMHARIC: "am",
+	ARABIC: "ar",
+	ARMENIAN: "hy",
+	ASSAMESE: "as",
+	AZERBAIJANI: "az",
+	BASHKIR: "ba",
+	BASQUE: "eu",
+	BELARUSIAN: "be",
+	BENGALI: "bn",
+	BOSNIAN: "bs",
+	BRETON: "br",
+	BULGARIAN: "bg",
+	BURMESE: "my",
+	CATALAN: "ca",
+	CHINESE: "zh",
+	CROATIAN: "hr",
+	CZECH: "cs",
+	DANISH: "da",
+	DUTCH: "nl",
+	ENGLISH: "en",
+	ESTONIAN: "et",
+	FAROESE: "fo",
+	FINNISH: "fi",
+	FRENCH: "fr",
+	GALICIAN: "gl",
+	GEORGIAN: "ka",
+	GERMAN: "de",
+	GREEK: "el",
+	GUJARATI: "gu",
+	HAITIAN: "ht",
+	HAUSA: "ha",
+	HEBREW: "he",
+	HINDI: "hi",
+	HUNGARIAN: "hu",
+	ICELANDIC: "is",
+	INDONESIAN: "id",
+	ITALIAN: "it",
+	JAPANESE: "ja",
+	JAVANESE: "jv",
+	KANNADA: "kn",
+	KAZAKH: "kk",
+	KOREAN: "ko",
+	LAO: "lo",
+	LATIN: "la",
+	LATVIAN: "lv",
+	LINGALA: "ln",
+	LITHUANIAN: "lt",
+	LUXEMBOURGISH: "lb",
+	MACEDONIAN: "mk",
+	MALAGASY: "mg",
+	MALAY: "ms",
+	MALAYALAM: "ml",
+	MALTESE: "mt",
+	MAORI: "mi",
+	MARATHI: "mr",
+	MONGOLIAN: "mn",
+	NEPALI: "ne",
+	NORWEGIAN: "nb",
+	OCCITAN: "oc",
+	PANJABI: "pa",
+	PERSIAN: "fa",
+	POLISH: "pl",
+	PORTUGUESE: "pt",
+	PUSHTO: "ps",
+	ROMANIAN: "ro",
+	RUSSIAN: "ru",
+	SANSKRIT: "sa",
+	SERBIAN: "sr",
+	SHONA: "sn",
+	SINDHI: "sd",
+	SINHALA: "si",
+	SLOVAK: "sk",
+	SLOVENIAN: "sl",
+	SOMALI: "so",
+	SPANISH: "es",
+	SUNDANESE: "su",
+	SWAHILI: "sw",
+	SWEDISH: "sv",
+	TAGALOG: "tl",
+	TAJIK: "tg",
+	TAMIL: "ta",
+	TATAR: "tt",
+	TELUGU: "te",
+	THAI: "th",
 };
 
 class TranscriptionSettingTab extends PluginSettingTab {
@@ -109,6 +203,26 @@ class TranscriptionSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
+			.setName("Language")
+			.setDesc("The language to transcribe the audio in")
+			.setTooltip("Automatically detected if not specified")
+			.addDropdown((dropdown) => {
+				dropdown.addOption("auto", "Auto-detect");
+				for (const [key, value] of Object.entries(LANGUAGES)) {
+					dropdown.addOption(
+						value,
+						key.charAt(0).toUpperCase() +
+							key.slice(1).toLowerCase(),
+					);
+				}
+				dropdown.setValue(this.plugin.settings.language);
+				dropdown.onChange(async (value) => {
+					this.plugin.settings.language = value;
+					await this.plugin.saveSettings();
+				});
+			});
+
+		new Setting(containerEl)
 			.setName("Swiftink Settings")
 			.setClass("swiftink-settings")
 			.setHeading();
@@ -120,11 +234,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				bt.setButtonText("Sign in with Email");
 				bt.setClass("swiftink-unauthed-only");
 				bt.onClick(async () => {
-					window.open(
-						"https://swiftink.io/login/?callback=obsidian://swiftink_auth",
-						// "http://localhost:4200/login/?callback=obsidian://swiftink_auth",
-						"_blank",
-					);
+					window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
 				});
 			})
 			.addButton((bt) => {
@@ -389,4 +499,4 @@ class TranscriptionSettingTab extends PluginSettingTab {
 }
 
 export type { TranscriptionSettings };
-export { DEFAULT_SETTINGS, TranscriptionSettingTab };
+export { DEFAULT_SETTINGS, TranscriptionSettingTab, SWIFTINK_AUTH_CALLBACK };
