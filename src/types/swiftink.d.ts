@@ -36,10 +36,36 @@ export interface paths {
      */
     get: operations["swiftink_api_routers_transcript_transcript_router_get_transcript_details"];
     /**
+     * Update Transcript
+     * @description Update a transcript by id
+     */
+    put: operations["swiftink_api_routers_transcript_transcript_router_update_transcript"];
+    /**
      * Delete Transcript
      * @description Delete a transcript by id
      */
     delete: operations["swiftink_api_routers_transcript_transcript_router_delete_transcript"];
+  };
+  "/transcripts/{id}/txt": {
+    /**
+     * Get Transcript Txt
+     * @description Get the text of a transcript and return as a .txt file
+     */
+    get: operations["swiftink_api_routers_transcript_transcript_router_get_transcript_txt"];
+  };
+  "/transcripts/{id}/srt": {
+    /**
+     * Get Transcript Srt
+     * @description Get the text of a transcript and return as a .srt file
+     */
+    get: operations["swiftink_api_routers_transcript_transcript_router_get_transcript_srt"];
+  };
+  "/transcripts/{id}/vtt": {
+    /**
+     * Get Transcript Vtt
+     * @description Get the text of a transcript and return as a .vtt file
+     */
+    get: operations["swiftink_api_routers_transcript_transcript_router_get_transcript_vtt"];
   };
   "/apikeys/": {
     /**
@@ -157,6 +183,12 @@ export interface components {
      */
     TranscriptStatus: "pending" | "uploaded" | "validating" | "validated" | "transcribing" | "transcribed" | "complete" | "validation_failed" | "failed";
     /**
+     * TranscriptRating
+     * @description An enumeration.
+     * @enum {string}
+     */
+    TranscriptRating: "none" | "positive" | "negative";
+    /**
      * TranscriptLanguage
      * @description ISO 639-1 language codes
      * @enum {string}
@@ -261,6 +293,8 @@ export interface components {
       user_id: string;
       /** @description Transcript status */
       status: components["schemas"]["TranscriptStatus"];
+      /** @description Transcript rating */
+      rating: components["schemas"]["TranscriptRating"];
       /** @description Detected language of the transcript in standard ISO 639-1 */
       language: components["schemas"]["TranscriptLanguage"];
       /**
@@ -305,6 +339,25 @@ export interface components {
        * @description Context to be used for the transcription
        */
       context?: string;
+      /**
+       * @description The language of the transcription. If this is not provided, the language will be detected automatically
+       * @example fa
+       */
+      language?: components["schemas"]["TranscriptLanguage"];
+    };
+    /** UpdateTranscriptRequest */
+    UpdateTranscriptRequest: {
+      /**
+       * Name
+       * @description The name of the transcript
+       * @example David Attenborough - Planet Earth II - Episode 1 - The Beasts of the Southern Wild
+       */
+      name?: string;
+      /**
+       * @description The rating of the transcript, positive or negative
+       * @example positive
+       */
+      rating?: components["schemas"]["TranscriptRating"];
     };
     /** APIKeySchema */
     APIKeySchema: {
@@ -571,14 +624,6 @@ export interface operations {
           "application/json": boolean;
         };
       };
-      /** @description Forbidden */
-      403: {
-        content: {
-          "application/json": {
-            [key: string]: string;
-          };
-        };
-      };
       /** @description Not Found */
       404: {
         content: never;
@@ -602,12 +647,32 @@ export interface operations {
           "application/json": components["schemas"]["TranscriptSchema"];
         };
       };
-      /** @description Forbidden */
-      403: {
+      /** @description Not Found */
+      404: {
+        content: never;
+      };
+    };
+  };
+  /**
+   * Update Transcript
+   * @description Update a transcript by id
+   */
+  swiftink_api_routers_transcript_transcript_router_update_transcript: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateTranscriptRequest"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
         content: {
-          "application/json": {
-            [key: string]: string;
-          };
+          "application/json": components["schemas"]["TranscriptSchema"];
         };
       };
       /** @description Not Found */
@@ -631,16 +696,59 @@ export interface operations {
       204: {
         content: never;
       };
-      /** @description Forbidden */
-      403: {
-        content: {
-          "application/json": {
-            [key: string]: string;
-          };
-        };
-      };
       /** @description Not Found */
       404: {
+        content: never;
+      };
+    };
+  };
+  /**
+   * Get Transcript Txt
+   * @description Get the text of a transcript and return as a .txt file
+   */
+  swiftink_api_routers_transcript_transcript_router_get_transcript_txt: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        content: never;
+      };
+    };
+  };
+  /**
+   * Get Transcript Srt
+   * @description Get the text of a transcript and return as a .srt file
+   */
+  swiftink_api_routers_transcript_transcript_router_get_transcript_srt: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        content: never;
+      };
+    };
+  };
+  /**
+   * Get Transcript Vtt
+   * @description Get the text of a transcript and return as a .vtt file
+   */
+  swiftink_api_routers_transcript_transcript_router_get_transcript_vtt: {
+    parameters: {
+      path: {
+        id: string;
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
         content: never;
       };
     };

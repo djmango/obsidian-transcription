@@ -100,9 +100,13 @@ export class TranscriptionEngine {
 		const [request_body, boundary_string] =
 			await payloadGenerator(payload_data);
 
+		let args = "task=transcribe";
+		if (this.settings.language != "auto")
+			args += `&language=${this.settings.language}`;
+
 		const options: RequestUrlParam = {
 			method: "POST",
-			url: `${this.settings.whisperASRUrl}/asr?task=transcribe&language=en`,
+			url: `${this.settings.whisperASRUrl}/asr${args}`,
 			contentType: `multipart/form-data; boundary=----${boundary_string}`,
 			body: request_body,
 		};
@@ -203,11 +207,17 @@ export class TranscriptionEngine {
 
 		const url = `${api_base}/transcripts/`;
 		const headers = { Authorization: `Bearer ${token}` };
-		const body: paths["/transcripts/"]["post"]["requestBody"]["content"]["application/json"] =
+		let body: paths["/transcripts/"]["post"]["requestBody"]["content"]["application/json"] =
 			{
 				name: filename,
 				url: fileUrl,
 			};
+
+		if (this.settings.language != "auto")
+			body.language = this.settings
+				.language as components["schemas"]["CreateTranscriptionRequest"]["language"];
+
+		if (this.settings.debug) console.log(body);
 
 		const options: RequestUrlParam = {
 			method: "POST",
