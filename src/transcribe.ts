@@ -104,12 +104,16 @@ export class TranscriptionEngine {
 		if (this.settings.language != "auto")
 			args += `&language=${this.settings.language}`;
 
+		const url = `${this.settings.whisperASRUrl}/asr?${args}`;
+		console.log("URL:", url);
+
 		const options: RequestUrlParam = {
 			method: "POST",
-			url: `${this.settings.whisperASRUrl}/asr${args}`,
+			url: url,
 			contentType: `multipart/form-data; boundary=----${boundary_string}`,
 			body: request_body,
 		};
+		console.log("Options:", options);
 
 		return requestUrl(options)
 			.then(async (response) => {
