@@ -14,6 +14,8 @@ interface TranscriptionSettings {
 	embedSummary: boolean;
 	embedOutline: boolean;
 	embedKeywords: boolean;
+	swiftink_access_token: string | null;
+	swiftink_refresh_token: string | null;
 }
 
 const SWIFTINK_AUTH_CALLBACK =
@@ -32,6 +34,8 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 	embedSummary: true,
 	embedOutline: true,
 	embedKeywords: true,
+	swiftink_access_token: null,
+	swiftink_refresh_token: null,
 };
 
 const LANGUAGES = {
@@ -263,6 +267,9 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				bt.onClick(async () => {
 					await this.plugin.supabase.auth.signOut();
 					this.plugin.user = null;
+					this.plugin.settings.swiftink_access_token = null;
+					this.plugin.settings.swiftink_refresh_token = null;
+					await this.plugin.saveSettings();
 					containerEl
 						.findAll(".swiftink-unauthed-only")
 						.forEach((element) => {

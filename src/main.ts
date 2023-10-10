@@ -73,25 +73,37 @@ export default class Transcription extends Plugin {
 		);
 
 		// Prompt the user to sign in if the have Swiftink selected and are not signed in
-		if (
-			this.settings.transcription_engine == "swiftink" &&
-			(await this.supabase.auth.getSession().then((res) => {
-				return res.data.session == null;
-			}))
-		) {
-			new Notice(
-				"Transcription: Please sign in to Swiftink.io via the settings tab",
-				4000,
-			);
-		} else if (this.settings.transcription_engine == "swiftink") {
+		if (this.settings.transcription_engine == "swiftink") {
 			this.user = await this.supabase.auth.getUser().then((res) => {
 				return res.data.user || null;
 			});
 			if (this.user == null) {
-				new Notice(
-					"Transcription: Please sign in to Swiftink.io via the settings tab",
-					4000,
-				);
+				// First try setting the access token and refresh token from the settings
+				if (this.settings.debug)
+					console.log(
+						"Trying to set access token and refresh token from settings",
+					);
+				if (
+					this.settings.swiftink_access_token != null &&
+					this.settings.swiftink_refresh_token != null
+				) {
+					await this.supabase.auth.setSession({
+						access_token: this.settings.swiftink_access_token,
+						refresh_token: this.settings.swiftink_refresh_token,
+					});
+					this.user = await this.supabase.auth
+						.getUser()
+						.then((res) => {
+							return res.data.user || null;
+						});
+				}
+
+				// If the user is still null, prompt them to sign in
+				if (this.user == null)
+					new Notice(
+						"Transcription: Please sign in to Swiftink.io via the settings tab",
+						4000,
+					);
 			}
 		}
 
@@ -290,6 +302,11 @@ export default class Transcription extends Plugin {
 					return res.data.user || null;
 				});
 				new Notice("Successfully authenticated with Swiftink.io");
+
+				// Save to settings
+				this.settings.swiftink_access_token = access_token;
+				this.settings.swiftink_refresh_token = refresh_token;
+				await this.saveSettings();
 
 				// Show the settings for user auth/unauth based on whether the user is signed in
 				if (this.user == null) {
