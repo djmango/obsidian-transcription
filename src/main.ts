@@ -239,9 +239,9 @@ export default class Transcription extends Plugin {
 					}
 
 					onChooseItem(file: TFile) {
-						if (view.file === null) return;
-						new Notice(`Transcribing ${file.name}`);
-						transcribeAndWrite(view.file, file);
+						 if (view.file === null) return;
+						  new Notice(`Transcribing ${file.name}`);
+						  transcribeAndWrite(view.file, file);
 					}
 				}
 

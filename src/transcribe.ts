@@ -162,11 +162,11 @@ export class TranscriptionEngine {
                     // Check if a notice has already been created
                     if (!uploadProgressNotice) {
                         // If not, create a new notice
-                        uploadProgressNotice = new Notice(noticeMessage, 100 * 1000);
+                        uploadProgressNotice = new Notice(noticeMessage, 800 * 100);
                     } else {
                         // If the notice exists, update its content
                         uploadProgressNotice.setMessage(noticeMessage);
-                        uploadProgressNotice.hide();
+                        //uploadProgressNotice.hide();
                     }
 
                     if (this.settings.debug) {
@@ -267,9 +267,10 @@ export class TranscriptionEngine {
             const updateTranscriptionNotice = (percentage: number) => {
                 const noticeMessage = `Transcribe: ${percentage.toFixed(2)}%`;
                 if (!transcriptionProgressNotice) {
-                    transcriptionProgressNotice = new Notice(noticeMessage, 100 * 1000);
+                    transcriptionProgressNotice = new Notice(noticeMessage ,800 * 100);
                 } else {
                     transcriptionProgressNotice.setMessage(noticeMessage);
+                    
                 }
             };
 
@@ -289,7 +290,7 @@ export class TranscriptionEngine {
                 ) {
                     clearInterval(poll);
 
-                    // Close the transcription progress notice on completion
+                    //Close the transcription progress notice on completion
                     if (transcriptionProgressNotice) {
                         transcriptionProgressNotice.hide();
                     }
