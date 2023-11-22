@@ -85,7 +85,7 @@ export default class Transcription extends Plugin {
                     );
                 if (
                     this.settings.swiftink_access_token != null &&
-					this.settings.swiftink_refresh_token != null
+                    this.settings.swiftink_refresh_token != null
                 ) {
                     await this.supabase.auth.setSession({
                         access_token: this.settings.swiftink_access_token,
@@ -126,21 +126,21 @@ export default class Transcription extends Plugin {
                 const linkedFileExtension = linkedFilePath.split(".").pop();
                 if (
                     linkedFileExtension === undefined ||
-					!Transcription.transcribeFileExtensions.includes(linkedFileExtension.toLowerCase(),
-					)
+                    !Transcription.transcribeFileExtensions.includes(linkedFileExtension.toLowerCase(),
+                    )
                 ) {
                     if (this.settings.debug)
                         console.log(
                             "Skipping " +
-							linkedFilePath +
-							" because the file extension is not in the list of transcribeable file extensions",
+                            linkedFilePath +
+                            " because the file extension is not in the list of transcribeable file extensions",
                         );
                     continue;
                 }
 
                 // We now know that the file extension is in the list of transcribeable file extensions
                 const linkedFile =
-					this.app.vault.getAbstractFileByPath(linkedFilePath);
+                    this.app.vault.getAbstractFileByPath(linkedFilePath);
 
                 // Validate that we are dealing with a file and add it to the list of verified files to transcribe
                 if (linkedFile instanceof TFile)
@@ -162,14 +162,14 @@ export default class Transcription extends Plugin {
                 .then(async (transcription) => {
                     let fileText = await this.app.vault.read(parent_file);
                     const fileLinkString =
-						this.app.metadataCache.fileToLinktext(file, parent_file.path,
-						); // This is the string that is used to link the audio file in the markdown file. If files are moved this potentially breaks, but Obsidian has built-in handlers for this, and handling that is outside the scope of this plugin
+                        this.app.metadataCache.fileToLinktext(file, parent_file.path,
+                        ); // This is the string that is used to link the audio file in the markdown file. If files are moved this potentially breaks, but Obsidian has built-in handlers for this, and handling that is outside the scope of this plugin
                     const fileLinkStringTagged = `[[${fileLinkString}]]`; // This is the string that is used to link the audio file in the markdown file.
 
                     // Perform a string replacement, add the transcription to the next line after the file link
                     const startReplacementIndex =
-						fileText.indexOf(fileLinkStringTagged) +
-						fileLinkStringTagged.length;
+                        fileText.indexOf(fileLinkStringTagged) +
+                        fileLinkStringTagged.length;
 
                     fileText = [
                         fileText.slice(0, startReplacementIndex),
@@ -184,8 +184,8 @@ export default class Transcription extends Plugin {
                     // First check if 402 is in the error message, if so alert the user that they need to pay
                     if (
                         error &&
-						error.message &&
-						error.message.includes("402")
+                        error.message &&
+                        error.message.includes("402")
                     ) {
                         new Notice(
                             "You have exceeded the free tier. Please upgrade to a paid plan at swiftink.io/pricing to continue transcribing files. Thanks for using Swiftink!",
