@@ -81,8 +81,7 @@ export class TranscriptionEngine {
 				console.log(`Transcription: ${transcription}`);
 			if (this.settings.debug)
 				console.log(
-					`Transcription took ${
-						new Date().getTime() - start.getTime()
+					`Transcription took ${new Date().getTime() - start.getTime()
 					} ms`,
 				);
 			return transcription;
@@ -212,10 +211,10 @@ export class TranscriptionEngine {
 		const url = `${api_base}/transcripts/`;
 		const headers = { Authorization: `Bearer ${token}` };
 		let body: paths["/transcripts/"]["post"]["requestBody"]["content"]["application/json"] =
-			{
-				name: filename,
-				url: fileUrl,
-			};
+		{
+			name: filename,
+			url: fileUrl,
+		};
 
 		if (this.settings.language != "auto")
 			body.language = this.settings
@@ -248,7 +247,7 @@ export class TranscriptionEngine {
 		// If the user has any of the embed options enabled, we need to wait for the transcription to complete
 		if (
 			(this.settings.embedSummary || this.settings.embedOutline,
-			this.settings.embedKeywords)
+				this.settings.embedKeywords)
 		) {
 			completed_statuses = ["complete"];
 		}
@@ -284,7 +283,7 @@ export class TranscriptionEngine {
 						console.error("Swiftink has detected an invalid file");
 					clearInterval(poll);
 					reject("Swiftink has detected an invalid file");
-				} else if (tries > 20) {
+				} else if (tries > 100) {
 					if (this.settings.debug)
 						console.error(
 							"Swiftink took too long to transcribe the file",
