@@ -16,6 +16,8 @@ interface TranscriptionSettings {
 	embedKeywords: boolean;
 	swiftink_access_token: string | null;
 	swiftink_refresh_token: string | null;
+	swiftinkUserId: string | null;
+	
 }
 
 const SWIFTINK_AUTH_CALLBACK =
@@ -36,6 +38,7 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 	embedKeywords: true,
 	swiftink_access_token: null,
 	swiftink_refresh_token: null,
+	swiftinkUserId: null
 };
 
 const LANGUAGES = {
