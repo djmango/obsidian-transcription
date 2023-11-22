@@ -64,14 +64,13 @@ export class TranscriptionEngine {
             );
         const start = new Date();
         this.transcriptionEngine =
-            this.transcription_engines[this.settings.transcription_engine];
+			this.transcription_engines[this.settings.transcription_engine];
         return this.transcriptionEngine(file).then((transcription) => {
             if (this.settings.debug)
                 console.log(`Transcription: ${transcription}`);
             if (this.settings.debug)
                 console.log(
-                    `Transcription took ${
-                        new Date().getTime() - start.getTime()
+                    `Transcription took ${new Date().getTime() - start.getTime()
                     } ms`,
                 );
             return transcription;
@@ -84,7 +83,7 @@ export class TranscriptionEngine {
             await this.vault.readBinary(file),
         ]);
         const [request_body, boundary_string] =
-            await payloadGenerator(payload_data);
+			await payloadGenerator(payload_data);
 
         let args = "task=transcribe";
         if (this.settings.language != "auto")
@@ -153,7 +152,7 @@ export class TranscriptionEngine {
                 onProgress: (bytesUploaded, bytesTotal) => {
                     const percentage = (
                         (bytesUploaded / bytesTotal) *
-                        100
+						100
                     ).toFixed(2);
 
                     // Create a notice message with the progress
@@ -219,10 +218,7 @@ export class TranscriptionEngine {
         const url = `${api_base}/transcripts/`;
         const headers = { Authorization: `Bearer ${token}` };
         const body: paths["/transcripts/"]["post"]["requestBody"]["content"]["application/json"] =
-            {
-                name: filename,
-                url: fileUrl,
-            };
+			{ name: filename, url: fileUrl, };
 
         if (this.settings.language != "auto")
             body.language = this.settings
@@ -247,15 +243,15 @@ export class TranscriptionEngine {
         }
 
         let transcript: components["schemas"]["TranscriptSchema"] =
-            transcript_create_res.json;
+			transcript_create_res.json;
         if (this.settings.debug) console.log(transcript);
 
         let completed_statuses = ["transcribed", "complete"];
 
         if (
             this.settings.embedSummary ||
-            this.settings.embedOutline ||
-            this.settings.embedKeywords
+			this.settings.embedOutline ||
+			this.settings.embedKeywords
         ) {
             completed_statuses = ["complete"];
         }
@@ -265,12 +261,12 @@ export class TranscriptionEngine {
 
             // Function to update the transcription progress notice
             const updateTranscriptionNotice = (percentage: number) => {
-                const noticeMessage = `Please wait, Swiftink is Transcribing the file`;
+                const noticeMessage = `Transcribing ${transcript.name}...`;
                 if (!transcriptionProgressNotice) {
-                    transcriptionProgressNotice = new Notice(noticeMessage ,800 * 100);
+                    transcriptionProgressNotice = new Notice(noticeMessage, 800 * 100);
                 } else {
                     transcriptionProgressNotice.setMessage(noticeMessage);
-                    
+
                 }
             };
 
@@ -286,7 +282,7 @@ export class TranscriptionEngine {
 
                 if (
                     transcript.status &&
-                    completed_statuses.includes(transcript.status)
+					completed_statuses.includes(transcript.status)
                 ) {
                     clearInterval(poll);
 
@@ -350,9 +346,9 @@ export class TranscriptionEngine {
 
         if (
             this.settings.embedSummary &&
-            transcript.summary &&
-            transcript.summary !==
-                "Insufficient information for a summary."
+			transcript.summary &&
+			transcript.summary !==
+			"Insufficient information for a summary."
         )
             transcript_text += `## Summary\n${transcript.summary}`;
 
@@ -361,7 +357,7 @@ export class TranscriptionEngine {
 
         if (
             this.settings.embedOutline &&
-            transcript.heading_segments.length > 0
+			transcript.heading_segments.length > 0
         )
             transcript_text += `## Outline\n${this.segmentsToTimestampedString(
                 transcript.heading_segments,
@@ -373,7 +369,7 @@ export class TranscriptionEngine {
 
         if (
             this.settings.embedKeywords &&
-            transcript.keywords.length > 0
+			transcript.keywords.length > 0
         )
             transcript_text += `## Keywords\n${transcript.keywords.join(
                 ", "
@@ -389,4 +385,4 @@ export class TranscriptionEngine {
         return transcript_text;
     }
 }
-	
+
