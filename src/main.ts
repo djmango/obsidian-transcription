@@ -208,7 +208,7 @@ export default class Transcription extends Plugin {
 				if (view.file === null) return;
 				const filesToTranscribe = getTranscribeableFiles(view.file);
 				new Notice(
-					"Transcribing all audio files in " + view.file.name,
+					"Files Selected " + view.file.name,
 					3000,
 				);
 
@@ -240,7 +240,7 @@ export default class Transcription extends Plugin {
 
 					onChooseItem(file: TFile) {
 						 if (view.file === null) return;
-						  new Notice(`Transcribing ${file.name}`);
+						  new Notice(`File Selected: ${file.name}`);
 						  transcribeAndWrite(view.file, file);
 					}
 				}
