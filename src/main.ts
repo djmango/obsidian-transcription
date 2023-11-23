@@ -133,8 +133,8 @@ export default class Transcription extends Plugin {
 					if (this.settings.debug)
 						console.log(
 							"Skipping " +
-								linkedFilePath +
-								" because the file extension is not in the list of transcribeable file extensions",
+							linkedFilePath +
+							" because the file extension is not in the list of transcribeable file extensions",
 						);
 					continue;
 				}
@@ -239,9 +239,9 @@ export default class Transcription extends Plugin {
 					}
 
 					onChooseItem(file: TFile) {
-						 if (view.file === null) return;
-						  new Notice(`File Selected: ${file.name}`);
-						  transcribeAndWrite(view.file, file);
+						if (view.file === null) return;
+						new Notice(`File Selected: ${file.name}`);
+						transcribeAndWrite(view.file, file);
 					}
 				}
 

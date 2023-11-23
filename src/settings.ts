@@ -17,7 +17,7 @@ interface TranscriptionSettings {
 	swiftink_access_token: string | null;
 	swiftink_refresh_token: string | null;
 	swiftinkUserId: string | null;
-	
+
 }
 
 const SWIFTINK_AUTH_CALLBACK =
@@ -219,7 +219,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 					dropdown.addOption(
 						value,
 						key.charAt(0).toUpperCase() +
-							key.slice(1).toLowerCase(),
+						key.slice(1).toLowerCase(),
 					);
 				}
 				dropdown.setValue(this.plugin.settings.language);

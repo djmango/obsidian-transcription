@@ -91,12 +91,12 @@ class StatusBarMessage {
 	timeShown: number;
 	kek_mode: boolean;
 
-	messageAge = function() {
+	messageAge = function () {
 		if (!this.timeShown) return 0;
 		return Date.now() - this.timeShown;
 	}
 
-	messageTimedOut = function() {
+	messageTimedOut = function () {
 		return this.messageAge() >= this.timeout;
 	}
 

@@ -70,8 +70,7 @@ export class TranscriptionEngine {
                 console.log(`Transcription: ${transcription}`);
             if (this.settings.debug)
                 console.log(
-                    `Transcription took ${
-                        new Date().getTime() - start.getTime()
+                    `Transcription took ${new Date().getTime() - start.getTime()
                     } ms`,
                 );
             return transcription;
@@ -216,13 +215,13 @@ export class TranscriptionEngine {
         let transcriptionProgressNotice: Notice | null = null;
 
         const fileUrl = `https://auth.swiftink.io/storage/v1/object/public/swiftink-upload/${id}/${filename}`;
-				const url = `${api_base}/transcripts/`;
+        const url = `${api_base}/transcripts/`;
         const headers = { Authorization: `Bearer ${token}` };
         let body: paths["/transcripts/"]["post"]["requestBody"]["content"]["application/json"] =
-            {
-                name: filename,
-                url: fileUrl,
-            };
+        {
+            name: filename,
+            url: fileUrl,
+        };
 
         if (this.settings.language != "auto")
             body.language = this.settings
@@ -267,10 +266,10 @@ export class TranscriptionEngine {
             const updateTranscriptionNotice = (percentage: number) => {
                 const noticeMessage = `Please wait, Swiftink is Transcribing the file`;
                 if (!transcriptionProgressNotice) {
-                    transcriptionProgressNotice = new Notice(noticeMessage ,800 * 100);
+                    transcriptionProgressNotice = new Notice(noticeMessage, 800 * 100);
                 } else {
                     transcriptionProgressNotice.setMessage(noticeMessage);
-                    
+
                 }
             };
 
@@ -352,7 +351,7 @@ export class TranscriptionEngine {
             this.settings.embedSummary &&
             transcript.summary &&
             transcript.summary !==
-                "Insufficient information for a summary."
+            "Insufficient information for a summary."
         )
             transcript_text += `## Summary\n${transcript.summary}`;
 
@@ -384,9 +383,9 @@ export class TranscriptionEngine {
 
         if (this.settings.embedAdditionalFunctionality) {
             transcript_text += `[...](obsidian://swiftink_transcript_functions?id=${transcript.id})`;
-					}
+        }
 
-					return transcript_text;
-			}
-	}
-	
+        return transcript_text;
+    }
+}
+
