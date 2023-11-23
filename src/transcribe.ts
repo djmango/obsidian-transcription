@@ -217,7 +217,7 @@ export class TranscriptionEngine {
         const fileUrl = `https://auth.swiftink.io/storage/v1/object/public/swiftink-upload/${id}/${filename}`;
         const url = `${api_base}/transcripts/`;
         const headers = { Authorization: `Bearer ${token}` };
-        let body: paths["/transcripts/"]["post"]["requestBody"]["content"]["application/json"] =
+        const body: paths["/transcripts/"]["post"]["requestBody"]["content"]["application/json"] =
         {
             name: filename,
             url: fileUrl,
@@ -335,7 +335,7 @@ export class TranscriptionEngine {
     formatSwiftinkResults(
         transcript: components["schemas"]["TranscriptSchema"]
     ): string {
-        let transcript_text: string = "## Transcript\n";
+        let transcript_text = "## Transcript\n";
 
         if (this.settings.timestamps)
             transcript_text += this.segmentsToTimestampedString(
