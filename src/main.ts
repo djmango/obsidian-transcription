@@ -101,14 +101,15 @@ export default class Transcription extends Plugin {
 
 				// If the user is still null, prompt them to sign in
 				if (this.user == null) {
-					new Notice(
-						"Transcription: Please sign in to Swiftink.io via the settings tab",
-						4000,
-					);
-					window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
+					const notice = new Notice("Transcription: Please click here and sign in to Swiftink.io", 8000);
+
+					notice.noticeEl.addEventListener('click', () => {
+						window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
+					});
 
 
 				}
+
 			}
 		}
 
@@ -161,6 +162,7 @@ export default class Transcription extends Plugin {
 		};
 
 		const transcribeAndWrite = async (parent_file: TFile, file: TFile) => {
+
 			if (this.settings.debug) console.log("Transcribing " + file.path);
 
 			this.transcription_engine
@@ -253,6 +255,7 @@ export default class Transcription extends Plugin {
 				new FileSelectionModal(this.app).open();
 			},
 		});
+
 
 		// Register a command to transcribe a media file when right-clicking on it
 		// this.registerEvent(
@@ -355,6 +358,7 @@ export default class Transcription extends Plugin {
 							element.innerHTML = `Manage ${this.user?.email}`;
 						});
 				}
+
 				return;
 			},
 		);
@@ -417,6 +421,8 @@ export default class Transcription extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
+
+
 }
 
 export { Transcription };
