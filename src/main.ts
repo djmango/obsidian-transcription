@@ -15,6 +15,7 @@ import {
 	TranscriptionSettings,
 	DEFAULT_SETTINGS,
 	TranscriptionSettingTab,
+	SWIFTINK_AUTH_CALLBACK
 } from "./settings";
 
 export default class Transcription extends Plugin {
@@ -99,11 +100,15 @@ export default class Transcription extends Plugin {
 				}
 
 				// If the user is still null, prompt them to sign in
-				if (this.user == null)
+				if (this.user == null) {
 					new Notice(
 						"Transcription: Please sign in to Swiftink.io via the settings tab",
 						4000,
 					);
+					window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
+
+
+				}
 			}
 		}
 
