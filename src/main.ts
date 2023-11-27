@@ -127,7 +127,7 @@ export default class Transcription extends Plugin {
 					noticeContent.appendChild(signInLink);
 
 					// Create the notice with the content
-					new Notice(noticeContent, 8000);
+					new Notice(noticeContent, 16 * 1000);
 				}
 
 
