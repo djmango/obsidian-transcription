@@ -135,7 +135,7 @@ export class TranscriptionEngine {
         // Declare progress notice for uploading
         let uploadProgressNotice: Notice | null = null;
 
-        const uploadPromise = new Promise<tus.Upload>((resolve, reject) => {
+        const uploadPromise = new Promise<tus.Upload>((resolve) => {
             const upload = new tus.Upload(new Blob([fileStream]), {
                 endpoint: `https://auth.swiftink.io/storage/v1/upload/resumable`,
                 retryDelays: [0, 3000, 5000, 10000, 20000],
@@ -190,6 +190,7 @@ export class TranscriptionEngine {
 
                     resolve(upload);
                 },
+
             });
 
             upload.start();
@@ -203,12 +204,7 @@ export class TranscriptionEngine {
                 console.log("Failed to upload to Swiftink: ", error);
             }
 
-            // // Close the progress notice on upload failure
-            // if (uploadProgressNotice) {
-            //     uploadProgressNotice.hide();
-            // }
-
-            return Promise.reject(error);
+            return Promise.reject(new Notice(`Failed to upload ${filename} to Swiftink`));
         }
 
         // Declare progress notice for transcription
