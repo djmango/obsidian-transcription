@@ -99,16 +99,38 @@ export default class Transcription extends Plugin {
 						});
 				}
 
-				// If the user is still null, prompt them to sign in
+				// // If the user is still null, prompt them to sign in
+				// if (this.user == null) {
+				// 	const notice = new Notice("Transcription: Please click here and sign in to Swiftink.io", 8000);
+
+				// 	notice.noticeEl.addEventListener('click', () => {
+				// 		window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
+				// 	});
+
+
+				// }
+
 				if (this.user == null) {
-					const notice = new Notice("Transcription: Please click here and sign in to Swiftink.io", 8000);
+					const noticeContent = document.createDocumentFragment();
 
-					notice.noticeEl.addEventListener('click', () => {
-						window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
-					});
+					// Create the text node
+					const textNode = document.createTextNode("Transcription: You are signed out. Please ");
 
+					// Create the hyperlink
+					const signInLink = document.createElement('a');
+					signInLink.href = SWIFTINK_AUTH_CALLBACK;
+					signInLink.target = '_blank';
+					signInLink.textContent = 'Sign In';
 
+					// Append the text and link to the document fragment
+					noticeContent.appendChild(textNode);
+					noticeContent.appendChild(signInLink);
+
+					// Create the notice with the content
+					new Notice(noticeContent, 8000);
 				}
+
+
 
 			}
 		}
