@@ -34,6 +34,20 @@ export class TranscriptionEngine {
         this.supabase = supabase;
     }
 
+    public async authenticateAndTranscribe(file: TFile): Promise<string> {
+        // Check if the user is authenticated
+        const session = await this.supabase.auth.getSession().then((res) => {
+            return res.data;
+        });
+
+        if (!session || !session.session) {
+            throw new Error("User not authenticated.");
+        }
+
+        // Perform transcription after successful authentication
+        return this.getTranscription(file);
+    }
+
     segmentsToTimestampedString(
         segments: components["schemas"]["TimestampedTextSegment"][],
         timestampFormat: string,

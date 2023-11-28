@@ -58,6 +58,27 @@ export default class Transcription extends Plugin {
 		},
 	);
 	public user: User | null;
+	private pendingCommand: { commandId: string; file: TFile } | null = null;
+
+	private async executePendingCommand(pendingCommand: { commandId: string; file: TFile }) {
+		// Additional checks or setup before starting the transcription process
+
+		const transcriptionEngine = new TranscriptionEngine(
+			this.settings,
+			this.app.vault,
+			this.statusBar,
+			this.supabase,
+		);
+
+		try {
+			const transcription = await transcriptionEngine.authenticateAndTranscribe(pendingCommand.file);
+			console.log(`Transcription result: ${transcription}`);
+		} catch (error) {
+			console.error("Error during transcription process:", error);
+		}
+	}
+
+
 
 	async onload() {
 		await this.loadSettings();
@@ -142,7 +163,7 @@ export default class Transcription extends Plugin {
 			);
 		}
 
-		const getTranscribeableFiles = (file: TFile) => {
+		const getTranscribeableFiles = (file: TFile): TFile[] => {
 			// Get all linked files in the markdown file
 			const filesLinked = Object.keys(
 				this.app.metadataCache.resolvedLinks[file.path],
@@ -235,16 +256,29 @@ export default class Transcription extends Plugin {
 			name: "Transcribe all files in view",
 			editorCallback: async (editor: Editor, view: MarkdownView) => {
 				if (view.file === null) return;
-				const filesToTranscribe = getTranscribeableFiles(view.file);
-				new Notice(
-					"Files Selected " + view.file.name,
-					3000,
-				);
 
-				// Now that we have all the files to transcribe, we can transcribe them
-				for (const fileToTranscribe of filesToTranscribe) {
-					transcribeAndWrite(view.file, fileToTranscribe);
+				if (this.user == null) {
+
+					this.pendingCommand = {
+						commandId: "obsidian-transcription-transcribe-all-in-view",
+						file: view.file
+					};
+					// Redirect to sign-in
+					window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
 				}
+				else {
+					const filesToTranscribe = getTranscribeableFiles(view.file);
+					new Notice(
+						"Files Selected " + view.file.name,
+						3000,
+					);
+
+					// Now that we have all the files to transcribe, we can transcribe them
+					for (const fileToTranscribe of filesToTranscribe) {
+						transcribeAndWrite(view.file, fileToTranscribe);
+					}
+				}
+
 			},
 		});
 
@@ -379,6 +413,12 @@ export default class Transcription extends Plugin {
 						.forEach((element) => {
 							element.innerHTML = `Manage ${this.user?.email}`;
 						});
+				}
+
+				// Execute the pending command if there is one
+				if (this.pendingCommand) {
+					await this.executePendingCommand(this.pendingCommand);
+					this.pendingCommand = null; // Reset pending command after execution
 				}
 
 				return;
