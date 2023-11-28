@@ -100,35 +100,38 @@ export default class Transcription extends Plugin {
 				}
 
 				// If the user is still null, prompt them to sign in
-				if (this.user == null) {
-					const notice = new Notice("Transcription: You are signed out. Please click to Sign In", 16 * 1000);
+				// if (this.user == null) {
+				// 	const notice = new Notice("Transcription: You are signed out. Please click to Sign In", 16 * 1000);
 
+				// 	notice.noticeEl.addEventListener('click', () => {
+				// 		window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
+				// 	});
+
+
+				// }
+
+				if (this.user == null) {
+					const noticeContent = document.createDocumentFragment();
+
+					// Create the text node
+					const textNode = document.createTextNode("Transcription: You are signed out. Please ");
+
+					// Create the hyperlink
+					const signInLink = document.createElement('a');
+					//signInLink.href = SWIFTINK_AUTH_CALLBACK;
+					signInLink.target = '_blank';
+					signInLink.textContent = 'Sign In';
+
+					// Append the text and link to the document fragment
+					noticeContent.appendChild(textNode);
+					noticeContent.appendChild(signInLink);
+
+					// Create the notice with the content
+					const notice = new Notice(noticeContent, 16 * 1000);
 					notice.noticeEl.addEventListener('click', () => {
 						window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
 					});
-
-
 				}
-
-				// if (this.user == null) {
-				// 	const noticeContent = document.createDocumentFragment();
-
-				// 	// Create the text node
-				// 	const textNode = document.createTextNode("Transcription: You are signed out. Please ");
-
-				// 	// Create the hyperlink
-				// 	const signInLink = document.createElement('a');
-				// 	signInLink.href = SWIFTINK_AUTH_CALLBACK;
-				// 	signInLink.target = '_blank';
-				// 	signInLink.textContent = 'Sign In';
-
-				// 	// Append the text and link to the document fragment
-				// 	noticeContent.appendChild(textNode);
-				// 	noticeContent.appendChild(signInLink);
-
-				// 	// Create the notice with the content
-				// 	new Notice(noticeContent, 16 * 1000);
-				// }
 
 
 
