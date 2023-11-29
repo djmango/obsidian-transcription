@@ -1,5 +1,5 @@
 import { TranscriptionSettings, SWIFTINK_AUTH_CALLBACK } from "src/settings";
-import { Notice, requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
+import { Notice, requestUrl, RequestUrlParam, TFile, Vault, App } from "obsidian";
 import { format } from "date-fns";
 import { paths, components } from "./types/swiftink";
 import { payloadGenerator, PayloadData } from "src/utils";
@@ -14,6 +14,7 @@ export class TranscriptionEngine {
     vault: Vault;
     status_bar: StatusBar | null;
     supabase: SupabaseClient;
+    app: App;
 
     transcriptionEngine: TranscriptionBackend;
 
@@ -27,14 +28,16 @@ export class TranscriptionEngine {
         vault: Vault,
         statusBar: StatusBar | null,
         supabase: SupabaseClient,
+        app: App
     ) {
         this.settings = settings;
         this.vault = vault;
         this.status_bar = statusBar;
         this.supabase = supabase;
+        this.app = app;
     }
 
-    public async authenticateAndTranscribe(file: TFile): Promise<string> {
+    public async authenticateAndTranscribe(file: TFile, parentFile: TFile) {
         // Check if the user is authenticated
         const session = await this.supabase.auth.getSession().then((res) => {
             return res.data;
@@ -45,8 +48,36 @@ export class TranscriptionEngine {
         }
 
         // Perform transcription after successful authentication
-        return this.getTranscription(file);
+        await this.printToObsidian(parentFile, file);
     }
+
+    public async printToObsidian(parent_file: TFile, file: TFile): Promise<void> {
+        if (this.settings.debug) console.log("Transcribing " + file.path);
+
+        this.getTranscription(file)
+            .then(async (transcription) => {
+                let fileText = await this.app.vault.read(parent_file);
+                const fileLinkString = this.app.metadataCache.fileToLinktext(file, parent_file.path);
+                const fileLinkStringTagged = `[[${fileLinkString}]]`;
+
+                const startReplacementIndex =
+                    fileText.indexOf(fileLinkStringTagged) + fileLinkStringTagged.length;
+
+                fileText = [
+                    fileText.slice(0, startReplacementIndex),
+                    `\n${transcription}`,
+                    fileText.slice(startReplacementIndex),
+                ].join("");
+
+                await this.app.vault.modify(parent_file, fileText);
+            })
+            .catch((error) => {
+                if (this.settings.debug) console.log(error);
+                new Notice(`Error transcribing file: ${error}`);
+            });
+    }
+
+
 
     segmentsToTimestampedString(
         segments: components["schemas"]["TimestampedTextSegment"][],
@@ -69,6 +100,32 @@ export class TranscriptionEngine {
             transcription += segment_string;
         }
         return transcription;
+    }
+
+    public async transcribeAndWrite(parent_file: TFile, file: TFile): Promise<void> {
+        if (this.settings.debug) console.log("Transcribing " + file.path);
+
+        this.getTranscription(file)
+            .then(async (transcription) => {
+                let fileText = await this.app.vault.read(parent_file);
+                const fileLinkString = this.app.metadataCache.fileToLinktext(file, parent_file.path);
+                const fileLinkStringTagged = `[[${fileLinkString}]]`;
+
+                const startReplacementIndex =
+                    fileText.indexOf(fileLinkStringTagged) + fileLinkStringTagged.length;
+
+                fileText = [
+                    fileText.slice(0, startReplacementIndex),
+                    `\n${transcription}`,
+                    fileText.slice(startReplacementIndex),
+                ].join("");
+
+                await this.app.vault.modify(parent_file, fileText);
+            })
+            .catch((error) => {
+                if (this.settings.debug) console.log(error);
+                new Notice(`Error transcribing file: ${error}`);
+            });
     }
 
     async getTranscription(file: TFile): Promise<string> {

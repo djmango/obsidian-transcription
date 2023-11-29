@@ -7,6 +7,7 @@ import {
     Notice,
     Platform,
     FuzzySuggestModal,
+
 } from "obsidian";
 import { TranscriptionEngine } from "./transcribe";
 import { StatusBar } from "./status";
@@ -58,9 +59,9 @@ export default class Transcription extends Plugin {
         },
     );
     public user: User | null;
-    private pendingCommand: { commandId: string; file: TFile } | null = null;
+    private pendingCommand: { commandId: string; file: TFile | TFile[], parentFile: TFile } | null = null;
 
-    private async executePendingCommand(pendingCommand: { commandId: string; file: TFile }) {
+    private async executePendingCommand(pendingCommand: { commandId: string; file: TFile | TFile[], parentFile: TFile }) {
         // Additional checks or setup before starting the transcription process
 
         const transcriptionEngine = new TranscriptionEngine(
@@ -68,11 +69,17 @@ export default class Transcription extends Plugin {
             this.app.vault,
             this.statusBar,
             this.supabase,
+            this.app
         );
 
         try {
-            const transcription = await transcriptionEngine.authenticateAndTranscribe(pendingCommand.file);
-            console.log(`Transcription result: ${transcription}`);
+            const filesToTranscribe = Array.isArray(pendingCommand.file) ? pendingCommand.file : [pendingCommand.file];
+
+
+            for (const file of filesToTranscribe) {
+                await transcriptionEngine.authenticateAndTranscribe(file, pendingCommand.parentFile);
+                //console.log(`Transcription result for ${file.name}: ${transcription}`);
+            }
         } catch (error) {
             console.error("Error during transcription process:", error);
         }
@@ -92,6 +99,7 @@ export default class Transcription extends Plugin {
             this.app.vault,
             this.statusBar,
             this.supabase,
+            this.app
         );
 
         // Prompt the user to sign in if the have Swiftink selected and are not signed in
@@ -166,7 +174,7 @@ export default class Transcription extends Plugin {
             );
         }
 
-        const getTranscribeableFiles = (file: TFile): TFile[] => {
+        const getTranscribeableFiles = (file: TFile) => {
             // Get all linked files in the markdown file
             const filesLinked = Object.keys(
                 this.app.metadataCache.resolvedLinks[file.path],
@@ -264,15 +272,22 @@ export default class Transcription extends Plugin {
 
                     this.pendingCommand = {
                         commandId: "obsidian-transcription-transcribe-all-in-view",
-                        file: view.file
+                        file: getTranscribeableFiles(view.file),
+                        parentFile: view.file,
                     };
+
                     // Redirect to sign-in
                     window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
+                    if (Array.isArray(this.pendingCommand.file)) {
+                        const fileNames = this.pendingCommand.file.map(file => file.name).join(", ");
+                        new Notice(`Selected files: ${fileNames}`, 3 * 1000);
+                    }
                 }
                 else {
                     const filesToTranscribe = getTranscribeableFiles(view.file);
+                    const fileNames = filesToTranscribe.map(file => file.name).join(", ");
                     new Notice(
-                        "Files Selected " + view.file.name,
+                        `Files Selected: ${fileNames}`,
                         3000,
                     );
 
