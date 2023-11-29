@@ -15,6 +15,7 @@ import {
     TranscriptionSettings,
     DEFAULT_SETTINGS,
     TranscriptionSettingTab,
+    SWIFTINK_AUTH_CALLBACK
 } from "./settings";
 
 export default class Transcription extends Plugin {
@@ -99,11 +100,41 @@ export default class Transcription extends Plugin {
                 }
 
                 // If the user is still null, prompt them to sign in
-                if (this.user == null)
-                    new Notice(
-                        "Transcription: Please sign in to Swiftink.io via the settings tab",
-                        4000,
-                    );
+                // if (this.user == null) {
+                // 	const notice = new Notice("Transcription: You are signed out. Please click to Sign In", 16 * 1000);
+
+                // 	notice.noticeEl.addEventListener('click', () => {
+                // 		window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
+                // 	});
+
+
+                // }
+
+                if (this.user == null) {
+                    const noticeContent = document.createDocumentFragment();
+
+                    // Create the text node
+                    const textNode = document.createTextNode("Transcription: You are signed out. Please ");
+
+                    // Create the hyperlink
+                    const signInLink = document.createElement('a');
+                    //signInLink.href = SWIFTINK_AUTH_CALLBACK;
+                    signInLink.target = '_blank';
+                    signInLink.textContent = 'Sign In';
+
+                    // Append the text and link to the document fragment
+                    noticeContent.appendChild(textNode);
+                    noticeContent.appendChild(signInLink);
+
+                    // Create the notice with the content
+                    const notice = new Notice(noticeContent, 16 * 1000);
+                    notice.noticeEl.addEventListener('click', () => {
+                        window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
+                    });
+                }
+
+
+
             }
         }
 
@@ -126,7 +157,8 @@ export default class Transcription extends Plugin {
                 const linkedFileExtension = linkedFilePath.split(".").pop();
                 if (
                     linkedFileExtension === undefined ||
-                    !Transcription.transcribeFileExtensions.includes(linkedFileExtension.toLowerCase(),
+                    !Transcription.transcribeFileExtensions.includes(
+                        linkedFileExtension.toLowerCase(),
                     )
                 ) {
                     if (this.settings.debug)
@@ -155,6 +187,7 @@ export default class Transcription extends Plugin {
         };
 
         const transcribeAndWrite = async (parent_file: TFile, file: TFile) => {
+
             if (this.settings.debug) console.log("Transcribing " + file.path);
 
             this.transcription_engine
@@ -245,6 +278,7 @@ export default class Transcription extends Plugin {
                 new FileSelectionModal(this.app).open();
             },
         });
+
 
         // Register a command to transcribe a media file when right-clicking on it
         // this.registerEvent(
@@ -347,6 +381,7 @@ export default class Transcription extends Plugin {
                             element.innerHTML = `Manage ${this.user?.email}`;
                         });
                 }
+
                 return;
             },
         );
@@ -409,6 +444,8 @@ export default class Transcription extends Plugin {
     async saveSettings() {
         await this.saveData(this.settings);
     }
+
+
 }
 
 export { Transcription };

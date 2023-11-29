@@ -2,24 +2,26 @@ import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import { Transcription } from "./main";
 
 interface TranscriptionSettings {
-	timestamps: boolean;
-	timestampFormat: string;
-	translate: boolean;
-	language: string;
-	verbosity: number;
-	whisperASRUrl: string;
-	debug: boolean;
-	transcription_engine: string;
-	embedAdditionalFunctionality: boolean;
-	embedSummary: boolean;
-	embedOutline: boolean;
-	embedKeywords: boolean;
-	swiftink_access_token: string | null;
-	swiftink_refresh_token: string | null;
+    timestamps: boolean;
+    timestampFormat: string;
+    translate: boolean;
+    language: string;
+    verbosity: number;
+    whisperASRUrl: string;
+    debug: boolean;
+    transcription_engine: string;
+    embedAdditionalFunctionality: boolean;
+    embedSummary: boolean;
+    embedOutline: boolean;
+    embedKeywords: boolean;
+    swiftink_access_token: string | null;
+    swiftink_refresh_token: string | null;
+
+
 }
 
 const SWIFTINK_AUTH_CALLBACK =
-	"https://swiftink.io/login/?callback=obsidian://swiftink_auth";
+    "https://swiftink.io/login/?callback=obsidian://swiftink_auth";
 
 const DEFAULT_SETTINGS: TranscriptionSettings = {
     timestamps: false,
@@ -36,6 +38,7 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
     embedKeywords: true,
     swiftink_access_token: null,
     swiftink_refresh_token: null,
+
 };
 
 const LANGUAGES = {
@@ -216,7 +219,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
                     dropdown.addOption(
                         value,
                         key.charAt(0).toUpperCase() +
-							key.slice(1).toLowerCase(),
+                        key.slice(1).toLowerCase(),
                     );
                 }
                 dropdown.setValue(this.plugin.settings.language);
@@ -388,7 +391,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
                     .setValue(this.plugin.settings.embedAdditionalFunctionality)
                     .onChange(async (value) => {
                         this.plugin.settings.embedAdditionalFunctionality =
-							value;
+                            value;
                         await this.plugin.saveSettings();
                     }),
             );
@@ -452,14 +455,14 @@ class TranscriptionSettingTab extends PluginSettingTab {
         const help = containerEl.createEl("p");
         help.classList.add("swiftink-settings");
         help.innerHTML =
-			"Questions? Please see our <a href='https://www.swiftink.io/docs'>Documentation</a> or email us at <a href='mailto:support@swiftnk.io'>support@swiftink.io</a> 🙂";
+            "Questions? Please see our <a href='https://www.swiftink.io/docs'>Documentation</a> or email us at <a href='mailto:support@swiftnk.io'>support@swiftink.io</a> 🙂";
         help.style.textAlign = "center";
         help.style.fontSize = "0.85em";
 
         const disclaimer = containerEl.createEl("p");
         disclaimer.classList.add("swiftink-settings");
         disclaimer.innerHTML =
-			"By proceeding you agree to our <a href='https://www.swiftink.io/terms'>Terms of Service</a> and <a href='https://www.swiftink.io/privacy'>Privacy Policy</a>.";
+            "By proceeding you agree to our <a href='https://www.swiftink.io/terms'>Terms of Service</a> and <a href='https://www.swiftink.io/privacy'>Privacy Policy</a>.";
         disclaimer.style.textAlign = "center";
         disclaimer.style.fontSize = "0.85em";
 

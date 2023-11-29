@@ -25,7 +25,7 @@ export class StatusBar {
 
 
     displayMessage(message: string, timeout: number, force = false, kek_mode = false) {
-    // Don't show the same message twice
+        // Don't show the same message twice
         if (this.messages[0] && this.messages[0].message === message) return;
 
         this.messages.push(new StatusBarMessage(`Transcribe: ${message.slice(0, 100)}`, timeout, force, kek_mode));
@@ -33,7 +33,7 @@ export class StatusBar {
     }
 
     display() {
-    // First check if there are any forced messages, if so, clear the queue and queue the last forced message
+        // First check if there are any forced messages, if so, clear the queue and queue the last forced message
         if (this.hasForcedMessage()) {
             const lastForced = this.messages.filter((message) => message.force).pop();
             if (lastForced) this.messages = [lastForced];
@@ -91,12 +91,12 @@ class StatusBarMessage {
     timeShown: number;
     kek_mode: boolean;
 
-    messageAge = function() {
+    messageAge = function () {
         if (!this.timeShown) return 0;
         return Date.now() - this.timeShown;
     }
 
-    messageTimedOut = function() {
+    messageTimedOut = function () {
         return this.messageAge() >= this.timeout;
     }
 
