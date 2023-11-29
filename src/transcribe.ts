@@ -9,6 +9,8 @@ import * as tus from "tus-js-client";
 
 type TranscriptionBackend = (file: TFile) => Promise<string>;
 
+const MAX_TRIES = 100
+
 export class TranscriptionEngine {
     settings: TranscriptionSettings;
     vault: Vault;
@@ -259,8 +261,8 @@ export class TranscriptionEngine {
             let tries = 0;
 
             // Function to update the transcription progress notice
-            const updateTranscriptionNotice = (percentage: number) => {
-                const noticeMessage = `Please wait, Swiftink is Transcribing the file`;
+            const updateTranscriptionNotice = () => {
+                const noticeMessage = `Transcribing ${transcript.name}...`;
                 if (!transcriptionProgressNotice) {
                     transcriptionProgressNotice = new Notice(noticeMessage, 800 * 100);
                 } else {
@@ -308,7 +310,7 @@ export class TranscriptionEngine {
                         );
                     clearInterval(poll);
                     reject("Swiftink has detected an invalid file");
-                } else if (tries > 20) {
+                } else if (tries > MAX_TRIES) {
                     if (this.settings.debug)
                         console.error(
                             "Swiftink took too long to transcribe the file"
@@ -319,9 +321,7 @@ export class TranscriptionEngine {
                     );
                 } else {
                     // Update the transcription progress notice
-                    updateTranscriptionNotice(
-                        (tries / 20) * 100
-                    );
+                    updateTranscriptionNotice();
                 }
                 tries++;
             }, 3000);
