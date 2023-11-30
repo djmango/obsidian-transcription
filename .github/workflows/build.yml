@@ -27,6 +27,10 @@ jobs:
                   restore-keys: |
                       ${{ runner.os }}-pnpm-
 
+            # Install pnpm
+            - name: Install pnpm
+              run: npm install -g pnpm
+
             # Install modules using pnpm
             - name: Install modules
               run: pnpm install

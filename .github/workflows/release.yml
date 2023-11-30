@@ -31,6 +31,10 @@ jobs:
                   restore-keys: |
                       ${{ runner.os }}-pnpm-
 
+            # Install pnpm
+            - name: Install pnpm
+              run: npm install -g pnpm
+
             - name: Build
               id: build
               run: |
