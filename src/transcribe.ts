@@ -60,32 +60,6 @@ export class TranscriptionEngine {
         return transcription;
     }
 
-    public async transcribeAndWrite(parent_file: TFile, file: TFile): Promise<void> {
-        if (this.settings.debug) console.log("Transcribing " + file.path);
-
-        this.getTranscription(file)
-            .then(async (transcription) => {
-                let fileText = await this.app.vault.read(parent_file);
-                const fileLinkString = this.app.metadataCache.fileToLinktext(file, parent_file.path);
-                const fileLinkStringTagged = `[[${fileLinkString}]]`;
-
-                const startReplacementIndex =
-                    fileText.indexOf(fileLinkStringTagged) + fileLinkStringTagged.length;
-
-                fileText = [
-                    fileText.slice(0, startReplacementIndex),
-                    `\n${transcription}`,
-                    fileText.slice(startReplacementIndex),
-                ].join("");
-
-                await this.app.vault.modify(parent_file, fileText);
-            })
-            .catch((error) => {
-                if (this.settings.debug) console.log(error);
-                new Notice(`Error transcribing file: ${error}`);
-            });
-    }
-
     async getTranscription(file: TFile): Promise<string> {
         if (this.settings.debug)
             console.log(
@@ -149,7 +123,7 @@ export class TranscriptionEngine {
         });
 
         if (session == null || session.session == null) {
-            window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
+            //window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
             return Promise.reject(
                 "No user session found. Please log in and try again.",
             );
