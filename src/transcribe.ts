@@ -37,48 +37,6 @@ export class TranscriptionEngine {
         this.app = app;
     }
 
-    public async authenticateAndTranscribe(file: TFile, parentFile: TFile) {
-        // Check if the user is authenticated
-        const session = await this.supabase.auth.getSession().then((res) => {
-            return res.data;
-        });
-
-        if (!session || !session.session) {
-            throw new Error("User not authenticated.");
-        }
-
-        // Perform transcription after successful authentication
-        await this.printToObsidian(parentFile, file);
-    }
-
-    public async printToObsidian(parent_file: TFile, file: TFile): Promise<void> {
-        if (this.settings.debug) console.log("Transcribing " + file.path);
-
-        this.getTranscription(file)
-            .then(async (transcription) => {
-                let fileText = await this.app.vault.read(parent_file);
-                const fileLinkString = this.app.metadataCache.fileToLinktext(file, parent_file.path);
-                const fileLinkStringTagged = `[[${fileLinkString}]]`;
-
-                const startReplacementIndex =
-                    fileText.indexOf(fileLinkStringTagged) + fileLinkStringTagged.length;
-
-                fileText = [
-                    fileText.slice(0, startReplacementIndex),
-                    `\n${transcription}`,
-                    fileText.slice(startReplacementIndex),
-                ].join("");
-
-                await this.app.vault.modify(parent_file, fileText);
-            })
-            .catch((error) => {
-                if (this.settings.debug) console.log(error);
-                new Notice(`Error transcribing file: ${error}`);
-            });
-    }
-
-
-
     segmentsToTimestampedString(
         segments: components["schemas"]["TimestampedTextSegment"][],
         timestampFormat: string,
@@ -227,7 +185,7 @@ export class TranscriptionEngine {
                     ).toFixed(2);
 
                     // Create a notice message with the progress
-                    const noticeMessage = `Uploading: ${percentage}%`;
+                    const noticeMessage = `Uploading ${filename}: ${percentage}%`;
 
                     // Check if a notice has already been created
                     if (!uploadProgressNotice) {
@@ -331,7 +289,7 @@ export class TranscriptionEngine {
 
             // Function to update the transcription progress notice
             const updateTranscriptionNotice = (percentage: number) => {
-                const noticeMessage = `Please wait, Swiftink is Transcribing the file`;
+                const noticeMessage = `Please wait, Swiftink is Transcribing ${filename}`;
                 if (!transcriptionProgressNotice) {
                     transcriptionProgressNotice = new Notice(noticeMessage, 800 * 100);
                 } else {
