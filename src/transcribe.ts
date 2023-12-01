@@ -263,7 +263,7 @@ export class TranscriptionEngine {
 
             // Function to update the transcription progress notice
             const updateTranscriptionNotice = (percentage: number) => {
-                const noticeMessage = `Please wait, Swiftink is Transcribing ${filename}`;
+                const noticeMessage = `Transcribing ${transcript.name}...`;
                 if (!transcriptionProgressNotice) {
                     transcriptionProgressNotice = new Notice(noticeMessage, 800 * 100);
                 } else {
