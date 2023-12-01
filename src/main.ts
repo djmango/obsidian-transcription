@@ -49,7 +49,7 @@ export default class Transcription extends Plugin {
         "mpg",
         "mkv",
     ];
-    public transcription_engine: TranscriptionEngine;
+    public transcriptionEngine: TranscriptionEngine;
     statusBar: StatusBar;
 
 
@@ -61,8 +61,6 @@ export default class Transcription extends Plugin {
     public supabase = createClient(
         SUPABASE_URL,
         SUPABASE_KEY,
-        // "https://auth.swiftink.io",
-        // "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjZGVxZ3JzcWFleHBub2dhdWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODU2OTM4NDUsImV4cCI6MjAwMTI2OTg0NX0.BBxpvuejw_E-Q_g6SU6G6sGP_6r4KnrP-vHV2JZpAho",
         {
             auth: {
                 detectSessionInUrl: false,
@@ -73,6 +71,26 @@ export default class Transcription extends Plugin {
     );
     public user: User | null;
 
+    private querySelectionOnAuthentication(authString: string, display: string) {
+        if (authString === ".swiftink-manage-account-btn") {
+            return document
+                .querySelectorAll(authString)
+                .forEach((element) => {
+                    element.innerHTML = `Manage ${this.user?.email}`;
+                });
+        }
+        else {
+            return document
+                .querySelectorAll(authString)
+                .forEach((element) => {
+                    element.setAttribute(
+                        "style",
+                        display,
+                    );
+                });
+        }
+    }
+
     private pendingCommand: { file: TFile | TFile[], parentFile: TFile } | null = null;
 
     private async executePendingCommand(pendingCommand: { file: TFile | TFile[], parentFile: TFile }) {
@@ -80,11 +98,11 @@ export default class Transcription extends Plugin {
 
         try {
             const filesToTranscribe = Array.isArray(pendingCommand.file) ? pendingCommand.file : [pendingCommand.file];
-            console.log(filesToTranscribe)
+
 
             for (const file of filesToTranscribe) {
                 await this.authenticateAndTranscribe(file, pendingCommand.parentFile);
-                //console.log(`Transcription result for ${file.name}: ${transcription}`);
+
             }
         } catch (error) {
             console.error("Error during transcription process:", error);
@@ -110,7 +128,7 @@ export default class Transcription extends Plugin {
     public async transcribeAndWrite(parent_file: TFile, file: TFile) {
         if (this.settings.debug) console.log("Transcribing " + file.path);
 
-        this.transcription_engine
+        this.transcriptionEngine
             .getTranscription(file)
             .then(async (transcription) => {
                 let fileText = await this.app.vault.read(parent_file);
@@ -137,8 +155,8 @@ export default class Transcription extends Plugin {
                 // First check if 402 is in the error message, if so alert the user that they need to pay
                 if (
                     error &&
-                    error.message &&
-                    error.message.includes("402")
+                    error?.message &&
+                    error?.message.includes("402")
                 ) {
                     new Notice(
                         "You have exceeded the free tier. Please upgrade to a paid plan at swiftink.io/pricing to continue transcribing files. Thanks for using Swiftink!",
@@ -160,7 +178,7 @@ export default class Transcription extends Plugin {
         console.log("Loading Obsidian Transcription");
         if (this.settings.debug) console.log("Debug mode enabled");
 
-        this.transcription_engine = new TranscriptionEngine(
+        this.transcriptionEngine = new TranscriptionEngine(
             this.settings,
             this.app.vault,
             this.statusBar,
@@ -169,7 +187,7 @@ export default class Transcription extends Plugin {
         );
 
         // Prompt the user to sign in if the have Swiftink selected and are not signed in
-        if (this.settings.transcription_engine == "swiftink") {
+        if (this.settings.transcriptionEngine == "swiftink") {
             this.user = await this.supabase.auth.getUser().then((res) => {
                 return res.data.user || null;
             });
@@ -424,45 +442,15 @@ export default class Transcription extends Plugin {
 
                 // Show the settings for user auth/unauth based on whether the user is signed in
                 if (this.user == null) {
-                    document
-                        .querySelectorAll(".swiftink-unauthed-only")
-                        .forEach((element) => {
-                            element.setAttribute(
-                                "style",
-                                "display: block !important",
-                            );
-                        });
-                    document
-                        .querySelectorAll(".swiftink-authed-only")
-                        .forEach((element) => {
-                            element.setAttribute(
-                                "style",
-                                "display: none !important",
-                            );
-                        });
+
+                    this.querySelectionOnAuthentication(".swiftink-unauthed-only", "display: block !important");
+                    this.querySelectionOnAuthentication(".swiftink-authed-only", "display: none !important");
+
                 } else {
-                    document
-                        .querySelectorAll(".swiftink-unauthed-only")
-                        .forEach((element) => {
-                            element.setAttribute(
-                                "style",
-                                "display: none !important",
-                            );
-                        });
-                    document
-                        .querySelectorAll(".swiftink-authed-only")
-                        .forEach((element) => {
-                            element.setAttribute(
-                                "style",
-                                "display: block !important",
-                            );
-                        });
-                    // Also set the user's email in the settings tab
-                    document
-                        .querySelectorAll(".swiftink-manage-account-btn")
-                        .forEach((element) => {
-                            element.innerHTML = `Manage ${this.user?.email}`;
-                        });
+                    this.querySelectionOnAuthentication(".swiftink-unauthed-only", "display: none !important");
+                    this.querySelectionOnAuthentication(".swiftink-authed-only", "display: block !important");
+                    this.querySelectionOnAuthentication(".swiftink-manage-account-btn", "");
+
                 }
 
                 // Execute the pending command if there is one

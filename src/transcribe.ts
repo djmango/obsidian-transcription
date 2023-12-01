@@ -12,7 +12,7 @@ type TranscriptionBackend = (file: TFile) => Promise<string>;
 export class TranscriptionEngine {
     settings: TranscriptionSettings;
     vault: Vault;
-    status_bar: StatusBar | null;
+    statusBar: StatusBar | null;
     supabase: SupabaseClient;
     app: App;
 
@@ -32,7 +32,7 @@ export class TranscriptionEngine {
     ) {
         this.settings = settings;
         this.vault = vault;
-        this.status_bar = statusBar;
+        this.statusBar = statusBar;
         this.supabase = supabase;
         this.app = app;
     }
@@ -63,11 +63,11 @@ export class TranscriptionEngine {
     async getTranscription(file: TFile): Promise<string> {
         if (this.settings.debug)
             console.log(
-                `Transcription engine: ${this.settings.transcription_engine}`,
+                `Transcription engine: ${this.settings.transcriptionEngine}`,
             );
         const start = new Date();
         this.transcriptionEngine =
-            this.transcription_engines[this.settings.transcription_engine];
+            this.transcription_engines[this.settings.transcriptionEngine];
         return this.transcriptionEngine(file).then((transcription) => {
             if (this.settings.debug)
                 console.log(`Transcription: ${transcription}`);

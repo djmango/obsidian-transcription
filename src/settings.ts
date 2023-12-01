@@ -9,7 +9,7 @@ interface TranscriptionSettings {
 	verbosity: number;
 	whisperASRUrl: string;
 	debug: boolean;
-	transcription_engine: string;
+	transcriptionEngine: string;
 	embedAdditionalFunctionality: boolean;
 	embedSummary: boolean;
 	embedOutline: boolean;
@@ -35,7 +35,7 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
 	verbosity: 1,
 	whisperASRUrl: "http://localhost:9000",
 	debug: false,
-	transcription_engine: "swiftink",
+	transcriptionEngine: "swiftink",
 	embedAdditionalFunctionality: true,
 	embedSummary: true,
 	embedOutline: true,
@@ -164,9 +164,9 @@ class TranscriptionSettingTab extends PluginSettingTab {
 				dropdown
 					.addOption("swiftink", "Swiftink")
 					.addOption("whisper_asr", "Whisper ASR")
-					.setValue(this.plugin.settings.transcription_engine)
+					.setValue(this.plugin.settings.transcriptionEngine)
 					.onChange(async (value) => {
-						this.plugin.settings.transcription_engine = value;
+						this.plugin.settings.transcriptionEngine = value;
 						await this.plugin.saveSettings();
 						// Hide the settings for the other transcription engine
 						if (value == "swiftink") {
@@ -473,14 +473,14 @@ class TranscriptionSettingTab extends PluginSettingTab {
 		// Logic! (the incredible true story)
 
 		// Initially hide the settings for the other transcription engine
-		if (this.plugin.settings.transcription_engine == "swiftink") {
+		if (this.plugin.settings.transcriptionEngine == "swiftink") {
 			containerEl.findAll(".swiftink-settings").forEach((element) => {
 				element.style.display = "block";
 			});
 			containerEl.findAll(".whisper-asr-settings").forEach((element) => {
 				element.style.display = "none";
 			});
-		} else if (this.plugin.settings.transcription_engine == "whisper_asr") {
+		} else if (this.plugin.settings.transcriptionEngine == "whisper_asr") {
 			containerEl.findAll(".swiftink-settings").forEach((element) => {
 				element.style.display = "none";
 			});
