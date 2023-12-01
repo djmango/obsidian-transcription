@@ -18,7 +18,9 @@ import {
     TranscriptionSettings,
     DEFAULT_SETTINGS,
     TranscriptionSettingTab,
-    SWIFTINK_AUTH_CALLBACK
+    SWIFTINK_AUTH_CALLBACK,
+    SUPABASE_URL,
+    SUPABASE_KEY
 } from "./settings";
 
 export default class Transcription extends Plugin {
@@ -57,8 +59,10 @@ export default class Transcription extends Plugin {
     }
 
     public supabase = createClient(
-        "https://auth.swiftink.io",
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjZGVxZ3JzcWFleHBub2dhdWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODU2OTM4NDUsImV4cCI6MjAwMTI2OTg0NX0.BBxpvuejw_E-Q_g6SU6G6sGP_6r4KnrP-vHV2JZpAho",
+        SUPABASE_URL,
+        SUPABASE_KEY,
+        // "https://auth.swiftink.io",
+        // "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjZGVxZ3JzcWFleHBub2dhdWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODU2OTM4NDUsImV4cCI6MjAwMTI2OTg0NX0.BBxpvuejw_E-Q_g6SU6G6sGP_6r4KnrP-vHV2JZpAho",
         {
             auth: {
                 detectSessionInUrl: false,

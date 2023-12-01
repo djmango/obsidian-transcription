@@ -1,4 +1,4 @@
-import { TranscriptionSettings, SWIFTINK_AUTH_CALLBACK } from "src/settings";
+import { TranscriptionSettings, SWIFTINK_AUTH_CALLBACK, API_BASE } from "src/settings";
 import { Notice, requestUrl, RequestUrlParam, TFile, Vault, App } from "obsidian";
 import { format } from "date-fns";
 import { paths, components } from "./types/swiftink";
@@ -116,7 +116,7 @@ export class TranscriptionEngine {
     }
 
     async getTranscriptionSwiftink(file: TFile): Promise<string> {
-        const api_base = "https://api.swiftink.io";
+        //const api_base = "https://api.swiftink.io";
 
         const session = await this.supabase.auth.getSession().then((res) => {
             return res.data;
@@ -214,7 +214,7 @@ export class TranscriptionEngine {
         let transcriptionProgressNotice: Notice | null = null;
 
         const fileUrl = `https://auth.swiftink.io/storage/v1/object/public/swiftink-upload/${id}/${filename}`;
-        const url = `${api_base}/transcripts/`;
+        const url = `${API_BASE}/transcripts/`;
         const headers = { Authorization: `Bearer ${token}` };
         const body: paths["/transcripts/"]["post"]["requestBody"]["content"]["application/json"] =
         {
@@ -275,7 +275,7 @@ export class TranscriptionEngine {
             const poll = setInterval(async () => {
                 const options: RequestUrlParam = {
                     method: "GET",
-                    url: `${api_base}/transcripts/${transcript.id}`,
+                    url: `${API_BASE}/transcripts/${transcript.id}`,
                     headers: headers,
                 };
                 const transcript_res = await requestUrl(options);
