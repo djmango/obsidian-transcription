@@ -1,4 +1,4 @@
-import { TranscriptionSettings, SWIFTINK_AUTH_CALLBACK, API_BASE } from "src/settings";
+import { TranscriptionSettings, /*SWIFTINK_AUTH_CALLBACK*/ API_BASE } from "src/settings";
 import { Notice, requestUrl, RequestUrlParam, TFile, Vault, App } from "obsidian";
 import { format } from "date-fns";
 import { paths, components } from "./types/swiftink";
@@ -123,7 +123,7 @@ export class TranscriptionEngine {
         });
 
         if (session == null || session.session == null) {
-            window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
+            //window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
             return Promise.reject(
                 "No user session found. Please log in and try again.",
             );
