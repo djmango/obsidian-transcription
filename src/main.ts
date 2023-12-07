@@ -442,21 +442,45 @@ export default class Transcription extends Plugin {
 
                 // Show the settings for user auth/unauth based on whether the user is signed in
                 if (this.user == null) {
-
-                    this.querySelectionOnAuthentication(".swiftink-unauthed-only", "display: block !important");
-                    this.querySelectionOnAuthentication(".swiftink-authed-only", "display: none !important");
-
+                    document
+                        .querySelectorAll(".swiftink-unauthed-only")
+                        .forEach((element) => {
+                            element.setAttribute(
+                                "style",
+                                "display: block !important",
+                            );
+                        });
+                    document
+                        .querySelectorAll(".swiftink-authed-only")
+                        .forEach((element) => {
+                            element.setAttribute(
+                                "style",
+                                "display: none !important",
+                            );
+                        });
                 } else {
-                    this.querySelectionOnAuthentication(".swiftink-unauthed-only", "display: none !important");
-                    this.querySelectionOnAuthentication(".swiftink-authed-only", "display: block !important");
-                    this.querySelectionOnAuthentication(".swiftink-manage-account-btn", "");
-
-                }
-
-                // Execute the pending command if there is one
-                if (this.pendingCommand) {
-                    await this.executePendingCommand(this.pendingCommand);
-                    this.pendingCommand = null; // Reset pending command after execution
+                    document
+                        .querySelectorAll(".swiftink-unauthed-only")
+                        .forEach((element) => {
+                            element.setAttribute(
+                                "style",
+                                "display: none !important",
+                            );
+                        });
+                    document
+                        .querySelectorAll(".swiftink-authed-only")
+                        .forEach((element) => {
+                            element.setAttribute(
+                                "style",
+                                "display: block !important",
+                            );
+                        });
+                    // Also set the user's email in the settings tab
+                    document
+                        .querySelectorAll(".swiftink-manage-account-btn")
+                        .forEach((element) => {
+                            element.innerHTML = `Manage ${this.user?.email}`;
+                        });
                 }
 
                 return;
