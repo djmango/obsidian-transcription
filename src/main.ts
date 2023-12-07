@@ -442,45 +442,15 @@ export default class Transcription extends Plugin {
 
                 // Show the settings for user auth/unauth based on whether the user is signed in
                 if (this.user == null) {
-                    document
-                        .querySelectorAll(".swiftink-unauthed-only")
-                        .forEach((element) => {
-                            element.setAttribute(
-                                "style",
-                                "display: block !important",
-                            );
-                        });
-                    document
-                        .querySelectorAll(".swiftink-authed-only")
-                        .forEach((element) => {
-                            element.setAttribute(
-                                "style",
-                                "display: none !important",
-                            );
-                        });
+                    this.querySelectionOnAuthentication(".swiftink-unauthed-only", "display: block !important");
+                    this.querySelectionOnAuthentication(".swiftink-authed-only", "display: none !important");
+
                 } else {
-                    document
-                        .querySelectorAll(".swiftink-unauthed-only")
-                        .forEach((element) => {
-                            element.setAttribute(
-                                "style",
-                                "display: none !important",
-                            );
-                        });
-                    document
-                        .querySelectorAll(".swiftink-authed-only")
-                        .forEach((element) => {
-                            element.setAttribute(
-                                "style",
-                                "display: block !important",
-                            );
-                        });
+                    this.querySelectionOnAuthentication(".swiftink-unauthed-only", "display: none !important");
+                    this.querySelectionOnAuthentication(".swiftink-authed-only", "display: block !important");
                     // Also set the user's email in the settings tab
-                    document
-                        .querySelectorAll(".swiftink-manage-account-btn")
-                        .forEach((element) => {
-                            element.innerHTML = `Manage ${this.user?.email}`;
-                        });
+                    this.querySelectionOnAuthentication(".swiftink-manage-account-btn", "");
+
                 }
 
                 return;
