@@ -453,6 +453,12 @@ export default class Transcription extends Plugin {
 
                 }
 
+                // Execute the pending command if there is one
+                if (this.pendingCommand) {
+                    await this.executePendingCommand(this.pendingCommand);
+                    this.pendingCommand = null; // Reset pending command after execution
+                }
+
                 return;
             },
         );
