@@ -9,7 +9,7 @@ interface TranscriptionSettings {
     verbosity: number;
     whisperASRUrl: string;
     debug: boolean;
-    transcription_engine: string;
+    transcriptionEngine: string;
     embedAdditionalFunctionality: boolean;
     embedSummary: boolean;
     embedOutline: boolean;
@@ -23,6 +23,10 @@ interface TranscriptionSettings {
 const SWIFTINK_AUTH_CALLBACK =
     "https://swiftink.io/login/?callback=obsidian://swiftink_auth";
 
+const SUPABASE_URL = "https://auth.swiftink.io";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjZGVxZ3JzcWFleHBub2dhdWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODU2OTM4NDUsImV4cCI6MjAwMTI2OTg0NX0.BBxpvuejw_E-Q_g6SU6G6sGP_6r4KnrP-vHV2JZpAho";
+const API_BASE = "https://api.swiftink.io";
+
 const DEFAULT_SETTINGS: TranscriptionSettings = {
     timestamps: false,
     timestampFormat: "HH:mm:ss",
@@ -31,7 +35,7 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
     verbosity: 1,
     whisperASRUrl: "http://localhost:9000",
     debug: false,
-    transcription_engine: "swiftink",
+    transcriptionEngine: "swiftink",
     embedAdditionalFunctionality: true,
     embedSummary: true,
     embedOutline: true,
@@ -160,9 +164,9 @@ class TranscriptionSettingTab extends PluginSettingTab {
                 dropdown
                     .addOption("swiftink", "Swiftink")
                     .addOption("whisper_asr", "Whisper ASR")
-                    .setValue(this.plugin.settings.transcription_engine)
+                    .setValue(this.plugin.settings.transcriptionEngine)
                     .onChange(async (value) => {
-                        this.plugin.settings.transcription_engine = value;
+                        this.plugin.settings.transcriptionEngine = value;
                         await this.plugin.saveSettings();
                         // Hide the settings for the other transcription engine
                         if (value == "swiftink") {
@@ -469,14 +473,14 @@ class TranscriptionSettingTab extends PluginSettingTab {
         // Logic! (the incredible true story)
 
         // Initially hide the settings for the other transcription engine
-        if (this.plugin.settings.transcription_engine == "swiftink") {
+        if (this.plugin.settings.transcriptionEngine == "swiftink") {
             containerEl.findAll(".swiftink-settings").forEach((element) => {
                 element.style.display = "block";
             });
             containerEl.findAll(".whisper-asr-settings").forEach((element) => {
                 element.style.display = "none";
             });
-        } else if (this.plugin.settings.transcription_engine == "whisper_asr") {
+        } else if (this.plugin.settings.transcriptionEngine == "whisper_asr") {
             containerEl.findAll(".swiftink-settings").forEach((element) => {
                 element.style.display = "none";
             });
@@ -509,4 +513,4 @@ class TranscriptionSettingTab extends PluginSettingTab {
 }
 
 export type { TranscriptionSettings };
-export { DEFAULT_SETTINGS, SWIFTINK_AUTH_CALLBACK, TranscriptionSettingTab };
+export { DEFAULT_SETTINGS, SWIFTINK_AUTH_CALLBACK, TranscriptionSettingTab, SUPABASE_URL, SUPABASE_KEY, API_BASE };

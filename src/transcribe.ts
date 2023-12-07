@@ -1,5 +1,5 @@
-import { TranscriptionSettings, SWIFTINK_AUTH_CALLBACK } from "src/settings";
-import { Notice, requestUrl, RequestUrlParam, TFile, Vault } from "obsidian";
+import { TranscriptionSettings, /*SWIFTINK_AUTH_CALLBACK*/ API_BASE } from "src/settings";
+import { Notice, requestUrl, RequestUrlParam, TFile, Vault, App } from "obsidian";
 import { format } from "date-fns";
 import { paths, components } from "./types/swiftink";
 import { payloadGenerator, PayloadData } from "src/utils";
@@ -14,8 +14,9 @@ const MAX_TRIES = 100
 export class TranscriptionEngine {
     settings: TranscriptionSettings;
     vault: Vault;
-    status_bar: StatusBar | null;
+    statusBar: StatusBar | null;
     supabase: SupabaseClient;
+    app: App;
 
     transcriptionEngine: TranscriptionBackend;
 
@@ -29,11 +30,13 @@ export class TranscriptionEngine {
         vault: Vault,
         statusBar: StatusBar | null,
         supabase: SupabaseClient,
+        app: App
     ) {
         this.settings = settings;
         this.vault = vault;
-        this.status_bar = statusBar;
+        this.statusBar = statusBar;
         this.supabase = supabase;
+        this.app = app;
     }
 
     segmentsToTimestampedString(
@@ -62,11 +65,11 @@ export class TranscriptionEngine {
     async getTranscription(file: TFile): Promise<string> {
         if (this.settings.debug)
             console.log(
-                `Transcription engine: ${this.settings.transcription_engine}`,
+                `Transcription engine: ${this.settings.transcriptionEngine}`,
             );
         const start = new Date();
         this.transcriptionEngine =
-            this.transcription_engines[this.settings.transcription_engine];
+            this.transcription_engines[this.settings.transcriptionEngine];
         return this.transcriptionEngine(file).then((transcription) => {
             if (this.settings.debug)
                 console.log(`Transcription: ${transcription}`);
@@ -115,14 +118,14 @@ export class TranscriptionEngine {
     }
 
     async getTranscriptionSwiftink(file: TFile): Promise<string> {
-        const api_base = "https://api.swiftink.io";
+        //const api_base = "https://api.swiftink.io";
 
         const session = await this.supabase.auth.getSession().then((res) => {
             return res.data;
         });
 
         if (session == null || session.session == null) {
-            window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
+            //window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
             return Promise.reject(
                 "No user session found. Please log in and try again.",
             );
@@ -158,7 +161,7 @@ export class TranscriptionEngine {
                     ).toFixed(2);
 
                     // Create a notice message with the progress
-                    const noticeMessage = `Uploading: ${percentage}%`;
+                    const noticeMessage = `Uploading ${filename}: ${percentage}%`;
 
                     // Check if a notice has already been created
                     if (!uploadProgressNotice) {
@@ -213,7 +216,7 @@ export class TranscriptionEngine {
         let transcriptionProgressNotice: Notice | null = null;
 
         const fileUrl = `https://auth.swiftink.io/storage/v1/object/public/swiftink-upload/${id}/${filename}`;
-        const url = `${api_base}/transcripts/`;
+        const url = `${API_BASE}/transcripts/`;
         const headers = { Authorization: `Bearer ${token}` };
         const body: paths["/transcripts/"]["post"]["requestBody"]["content"]["application/json"] =
         {
@@ -274,7 +277,7 @@ export class TranscriptionEngine {
             const poll = setInterval(async () => {
                 const options: RequestUrlParam = {
                     method: "GET",
-                    url: `${api_base}/transcripts/${transcript.id}`,
+                    url: `${API_BASE}/transcripts/${transcript.id}`,
                     headers: headers,
                 };
                 const transcript_res = await requestUrl(options);
