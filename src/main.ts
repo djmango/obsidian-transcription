@@ -9,6 +9,8 @@ import {
     Platform,
     FuzzySuggestModal,
     App,
+    Menu,
+
 
 } from "obsidian";
 import { TranscriptionEngine } from "./transcribe";
@@ -169,6 +171,39 @@ export default class Transcription extends Plugin {
             });
     }
 
+    onFileMenu(menu: Menu, file: TFile) {
+        const parentFile = this.app.workspace.getActiveFile();
+
+        // Check if the parent file is not null and the file is of a type you want to handle
+        if (parentFile instanceof TFile && file instanceof TFile) {
+            // Get the file extension
+            const fileExtension = file.extension?.toLowerCase();
+
+            // Check if the file extension is in the allowed list
+            if (fileExtension && Transcription.transcribeFileExtensions.includes(fileExtension)) {
+                // Add a new item to the right-click menu
+                menu.addItem((item) => {
+                    item
+                        .setTitle('Transcribe')
+                        .setIcon('headphones')
+                        .onClick(async () => {
+
+                            if (this.user == null) {
+                                this.pendingCommand = {
+                                    file: file,
+                                    parentFile: parentFile,
+                                };
+                                // Redirect to sign-in
+                                window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
+                            }
+                            // Handle the click event
+                            await this.transcribeAndWrite(parentFile, file);
+                        });
+                });
+            }
+        }
+    }
+
 
 
     async onload() {
@@ -248,6 +283,11 @@ export default class Transcription extends Plugin {
                 window.setInterval(() => this.statusBar.display(), 1000),
             );
         }
+
+        // Register the file-menu event
+        this.registerEvent(
+            this.app.workspace.on("file-menu", this.onFileMenu.bind(this))
+        );
 
         const getTranscribeableFiles = (file: TFile) => {
             // Get all linked files in the markdown file
