@@ -185,6 +185,7 @@ export default class Transcription extends Plugin {
                 menu.addItem((item) => {
                     item
                         .setTitle('Transcribe')
+                        .setIcon('headphones')
                         .onClick(async () => {
 
                             if (this.user == null) {
