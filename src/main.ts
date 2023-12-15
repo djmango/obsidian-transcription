@@ -23,6 +23,7 @@ import {
     SUPABASE_KEY,
 } from "./settings";
 
+
 export default class Transcription extends Plugin {
     settings: TranscriptionSettings;
     public static plugin: Plugin;
@@ -49,8 +50,13 @@ export default class Transcription extends Plugin {
         "mpg",
         "mkv",
     ];
+
+    
     public transcriptionEngine: TranscriptionEngine;
     statusBar: StatusBar;
+    public user: User | null;
+    private transcriptionAbortController: AbortController | null = null;
+    private pendingCommand: { file?: TFile; parentFile: TFile } | null = null;
 
     constructor(app: App, manifest: PluginManifest) {
         super(app, manifest);
@@ -64,7 +70,7 @@ export default class Transcription extends Plugin {
             persistSession: true,
         },
     });
-    public user: User | null;
+    
 
     private querySelectionOnAuthentication(
         authString: string,
@@ -81,10 +87,7 @@ export default class Transcription extends Plugin {
         }
     }
 
-    private transcriptionAbortController: AbortController | null = null;
-    private pendingCommand: { file?: TFile; parentFile: TFile } | null = null;
-    //private ongoingTranscriptionTask: Promise<void> | null = null;
-
+    
     // Modify your executePendingCommand method to store the ongoing task
     private async executePendingCommand(pendingCommand: {
         file?: TFile;
@@ -131,21 +134,6 @@ export default class Transcription extends Plugin {
         }
     }
 
-    public async stopTranscription() {
-        try {
-            if (this.transcriptionAbortController) {
-                // Signal abort to the ongoing transcription task
-                this.transcriptionAbortController.abort();
-
-                console.log("Stopping ongoing transcription...");
-            } else {
-                console.log("No ongoing transcription to stop.");
-            }
-        } catch (error) {
-            console.error("Error stopping transcription:", error);
-        }
-    }
-
     public getTranscribeableFiles = async (file: TFile) => {
         // Get all linked files in the markdown file
         const filesLinked = Object.keys(
@@ -186,28 +174,6 @@ export default class Transcription extends Plugin {
         return filesToTranscribe;
     };
 
-    // public async authenticateAndTranscribe(file: TFile, parentFile: TFile) {
-    //     try {
-    //         // Check if the user is authenticated
-    //         const session = await this.supabase.auth.getSession().then((res) => {
-    //             return res.data;
-    //         });
-
-    //         if (!session || !session.session) {
-    //             throw new Error("User not authenticated.");
-    //         }
-
-    //         // // Create a new AbortController for each transcription task
-    //         this.transcriptionAbortController = new AbortController();
-
-    //         // Perform transcription after successful authentication
-    //         await this.transcribeAndWrite(parentFile, file, this.transcriptionAbortController);
-    //     } catch (error) {
-    //         console.error("Error during authentication and transcription:", error);
-
-    //     }
-    // }
-
     public async transcribeAndWrite(
         parent_file: TFile,
         file: TFile,
@@ -216,22 +182,10 @@ export default class Transcription extends Plugin {
         try {
             if (this.settings.debug) console.log("Transcribing " + file.path);
 
-            // Check if an AbortController is provided and if it has been aborted
-            if (abortController && abortController.signal.aborted) {
-                new Notice("Transcription cancelled", 5 * 1000);
-                console.log("Transcription cancelled.");
-                return;
-            }
-
             const transcription =
                 await this.transcriptionEngine.getTranscription(file);
 
-            // Check if an AbortController is provided and if it has been aborted
-            if (abortController && abortController.signal.aborted) {
-                new Notice("Transcription cancelled", 5 * 1000);
-                console.log("Transcription cancelled.");
-                return;
-            }
+            
 
             let fileText = await this.app.vault.read(parent_file);
             const fileLinkString = this.app.metadataCache.fileToLinktext(
@@ -250,7 +204,8 @@ export default class Transcription extends Plugin {
                 fileText.slice(startReplacementIndex),
             ].join("");
 
-            // Check if an AbortController is provided and if it has been aborted
+            //check if abortion signal is aborted
+
             if (abortController && abortController.signal.aborted) {
                 new Notice("Transcription cancelled", 5 * 1000);
                 console.log("Transcription cancelled.");
@@ -314,6 +269,22 @@ export default class Transcription extends Plugin {
         }
     }
 
+    public async stopTranscription() {
+        try {
+            if (this.transcriptionAbortController) {
+                // Signal abort to the ongoing transcription task
+                this.transcriptionAbortController.abort();
+                
+
+                console.log("Stopping ongoing transcription...");
+            } else {
+                console.log("No ongoing transcription to stop.");
+            }
+        } catch (error) {
+            console.error("Error stopping transcription:", error);
+        }
+    }
+
     async onload() {
         await this.loadSettings();
 
@@ -326,7 +297,8 @@ export default class Transcription extends Plugin {
             this.app.vault,
             this.statusBar,
             this.supabase,
-            this.app
+            this.app,
+            
         );
 
         // Prompt the user to sign in if the have Swiftink selected and are not signed in
@@ -396,46 +368,7 @@ export default class Transcription extends Plugin {
             this.app.workspace.on("file-menu", this.onFileMenu.bind(this))
         );
 
-        // const getTranscribeableFiles = (file: TFile) => {
-        //     // Get all linked files in the markdown file
-        //     const filesLinked = Object.keys(
-        //         this.app.metadataCache.resolvedLinks[file.path],
-        //     );
-
-        //     // Now that we have all the files linked in the markdown file, we need to filter them by the file extensions we want to transcribe
-        //     const filesToTranscribe: TFile[] = [];
-        //     for (const linkedFilePath of filesLinked) {
-        //         const linkedFileExtension = linkedFilePath.split(".").pop();
-        //         if (
-        //             linkedFileExtension === undefined ||
-        //             !Transcription.transcribeFileExtensions.includes(
-        //                 linkedFileExtension.toLowerCase(),
-        //             )
-        //         ) {
-        //             if (this.settings.debug)
-        //                 console.log(
-        //                     "Skipping " +
-        //                     linkedFilePath +
-        //                     " because the file extension is not in the list of transcribeable file extensions",
-        //                 );
-        //             continue;
-        //         }
-
-        //         // We now know that the file extension is in the list of transcribeable file extensions
-        //         const linkedFile =
-        //             this.app.vault.getAbstractFileByPath(linkedFilePath);
-
-        //         // Validate that we are dealing with a file and add it to the list of verified files to transcribe
-        //         if (linkedFile instanceof TFile)
-        //             filesToTranscribe.push(linkedFile);
-        //         else {
-        //             if (this.settings.debug)
-        //                 console.log("Could not find file " + linkedFilePath);
-        //             continue;
-        //         }
-        //     }
-        //     return filesToTranscribe;
-        // };
+        
 
         this.addCommand({
             id: "obsidian-transcription-stop",
@@ -471,17 +404,6 @@ export default class Transcription extends Plugin {
 
                     window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
 
-                    // this.pendingCommand = {
-                    //     file: getTranscribeableFiles(view.file),
-                    //     parentFile: view.file,
-                    // };
-
-                    // // Redirect to sign-in
-                    // window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
-                    // if (Array.isArray(this.pendingCommand.file)) {
-                    //     const fileNames = this.pendingCommand.file.map(file => file.name).join(", ");
-                    //     new Notice(`Files Selected: ${fileNames}`, 5000);
-                    // }
                 } else {
                     // Now that we have all the files to transcribe, we can transcribe them
                     for (const fileToTranscribe of filesToTranscribe) {
