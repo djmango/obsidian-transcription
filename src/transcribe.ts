@@ -164,7 +164,7 @@ export class TranscriptionEngine {
                     // Check if a notice has already been created
                     if (!uploadProgressNotice) {
                         // If not, create a new notice
-                        uploadProgressNotice = new Notice(noticeMessage, 800 * 100);
+                        uploadProgressNotice = new Notice(noticeMessage, 80 * 1000);
                     } else {
                         // If the notice exists, update its content
                         uploadProgressNotice.setMessage(noticeMessage);
@@ -265,7 +265,7 @@ export class TranscriptionEngine {
             const updateTranscriptionNotice = (percentage: number) => {
                 const noticeMessage = `Transcribing ${transcript.name}...`;
                 if (!transcriptionProgressNotice) {
-                    transcriptionProgressNotice = new Notice(noticeMessage, 800 * 100);
+                    transcriptionProgressNotice = new Notice(noticeMessage, 80 * 1000);
                 } else {
                     transcriptionProgressNotice.setMessage(noticeMessage);
 
