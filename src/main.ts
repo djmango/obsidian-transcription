@@ -262,7 +262,7 @@ export default class Transcription extends Plugin {
                         .onClick(async () => {
 
 
-                            if (this.user == null) {
+                            if (this.user == null && this.settings.transcriptionEngine == "swiftink") {
                                 this.pendingCommand = {
                                     file: file,
                                     parentFile: parentFile,
@@ -414,7 +414,7 @@ export default class Transcription extends Plugin {
                 const fileNames = filesToTranscribe.map((file) => file.name).join(", ");
                 new Notice(`Files Selected: ${fileNames}`, 5 * 1000);
 
-                if (this.user == null) {
+                if (this.user == null && this.settings.transcriptionEngine == "swiftink") {
 
                     this.pendingCommand = {
                         parentFile: view.file,
@@ -471,7 +471,7 @@ export default class Transcription extends Plugin {
 
                         new Notice(`File Selected: ${file.name}`, 5 * 1000);
 
-                        if (this.transcriptionInstance.user == null) {
+                        if (this.transcriptionInstance.user == null && this.transcriptionInstance.settings.transcriptionEngine == "swiftink") {
                             this.transcriptionInstance.pendingCommand = {
                                 file: file,
                                 parentFile: view.file,
