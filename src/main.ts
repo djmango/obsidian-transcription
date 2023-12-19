@@ -21,6 +21,7 @@ import {
     SWIFTINK_AUTH_CALLBACK,
     SUPABASE_URL,
     SUPABASE_KEY,
+    IS_SWIFTINK
 } from "./settings";
 
 
@@ -262,7 +263,7 @@ export default class Transcription extends Plugin {
                         .onClick(async () => {
 
 
-                            if (this.user == null && this.settings.transcriptionEngine == "swiftink") {
+                            if (this.user == null && this.settings.transcriptionEngine == IS_SWIFTINK) {
                                 this.pendingCommand = {
                                     file: file,
                                     parentFile: parentFile,
@@ -414,7 +415,8 @@ export default class Transcription extends Plugin {
                 const fileNames = filesToTranscribe.map((file) => file.name).join(", ");
                 new Notice(`Files Selected: ${fileNames}`, 5 * 1000);
 
-                if (this.user == null && this.settings.transcriptionEngine == "swiftink") {
+
+                if (this.user == null && this.settings.transcriptionEngine == IS_SWIFTINK) {
 
                     this.pendingCommand = {
                         parentFile: view.file,
@@ -471,7 +473,8 @@ export default class Transcription extends Plugin {
 
                         new Notice(`File Selected: ${file.name}`, 5 * 1000);
 
-                        if (this.transcriptionInstance.user == null && this.transcriptionInstance.settings.transcriptionEngine == "swiftink") {
+
+                        if (this.transcriptionInstance.user == null && this.transcriptionInstance.settings.transcriptionEngine == IS_SWIFTINK) {
                             this.transcriptionInstance.pendingCommand = {
                                 file: file,
                                 parentFile: view.file,
