@@ -1,5 +1,4 @@
 import { ChildProcess } from "child_process";
-import path from "path";
 import {
     Editor,
     MarkdownView,
@@ -11,7 +10,6 @@ import {
     FuzzySuggestModal,
     App,
     Menu,
-    View,
     Modal
 } from "obsidian";
 import { TranscriptionEngine } from "./transcribe";
@@ -386,21 +384,21 @@ export default class Transcription extends Plugin {
 
 
                     onOpen() {
-                        let { contentEl } = this;
+                        const { contentEl } = this;
                         contentEl.createEl("h2", { text: "Select files:" });
-                        let input = contentEl.createEl("input", {
+                        const input = contentEl.createEl("input", {
                             type: "file",
                             attr: { multiple: "" },
                         });
                         contentEl.createEl("br");
                         contentEl.createEl("br");
-                        let button = contentEl.createEl("button", { text: "Add file link" });
+                        const button = contentEl.createEl("button", { text: "Add file link" });
                         button.addEventListener("click", () => {
-                            let fileList = input.files;
+                            const fileList = input.files;
                             if (fileList) {
-                                let files = Array.from(fileList);
-                                let path: string = ""
-                                for (let file of files) {
+                                const files = Array.from(fileList);
+                                let path = ""
+                                for (const file of files) {
                                     //     console.log(file)
                                     //@ts-ignore
                                     path = this.app.vault.getResourcePath(file).toString();
@@ -411,11 +409,11 @@ export default class Transcription extends Plugin {
                                 // //@ts-ignore
                                 // let attachementFolder = this.app.vault.config.attachmentFolderPath;
                                 //@ts-ignore
-                                let basePath = this.app.vault.adapter.basePath;
+                                const basePath = this.app.vault.adapter.basePath;
                                 // console.log(attachementFolder);
                                 // console.log(basePath);
 
-                                let fe = new FileLink(
+                                const fe = new FileLink(
                                     path,
                                     basePath,
                                 );

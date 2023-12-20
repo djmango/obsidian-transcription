@@ -1,6 +1,4 @@
-import { Notice } from "obsidian";
-import fs from "fs";
-import path from "path";
+
 
 export class FileLink {
 
