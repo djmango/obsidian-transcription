@@ -1,6 +1,6 @@
 {
     "name": "obsidian-transcription",
-    "version": "3.2.1",
+    "version": "3.2.2",
     "description": "Obsidian plugin to create high-quality text transcriptions from any media file, on any device",
     "main": "main.js",
     "scripts": {
