@@ -10,8 +10,6 @@ import {
     FuzzySuggestModal,
     App,
     Menu,
-
-
 } from "obsidian";
 import { TranscriptionEngine } from "./transcribe";
 import { StatusBar } from "./status";
@@ -22,13 +20,25 @@ import {
     TranscriptionSettingTab,
     SWIFTINK_AUTH_CALLBACK,
     SUPABASE_URL,
-    SUPABASE_KEY
+    SUPABASE_KEY,
+    IS_SWIFTINK
 } from "./settings";
+
 
 export default class Transcription extends Plugin {
     settings: TranscriptionSettings;
+    statusBar: StatusBar;
+
     public static plugin: Plugin;
     public static children: Array<ChildProcess> = [];
+    public transcriptionEngine: TranscriptionEngine;
+    public user: User | null;
+
+    private pendingCommand: { file?: TFile; parentFile: TFile } | null = null;
+    private ongoingTranscriptionTasks: Array<{
+        task: Promise<void>;
+        abortController: AbortController;
+    }> = [];
     private static transcribeFileExtensions: string[] = [
         "mp3",
         "wav",
@@ -51,124 +61,185 @@ export default class Transcription extends Plugin {
         "mpg",
         "mkv",
     ];
-    public transcriptionEngine: TranscriptionEngine;
-    statusBar: StatusBar;
-
 
     constructor(app: App, manifest: PluginManifest) {
         super(app, manifest);
         // Additional initialization if needed
     }
 
-    public supabase = createClient(
-        SUPABASE_URL,
-        SUPABASE_KEY,
-        {
-            auth: {
-                detectSessionInUrl: false,
-                autoRefreshToken: true,
-                persistSession: true,
-            },
+    public supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: {
+            detectSessionInUrl: false,
+            autoRefreshToken: true,
+            persistSession: true,
         },
-    );
-    public user: User | null;
+    });
 
-    private querySelectionOnAuthentication(authString: string, display: string) {
+
+    private querySelectionOnAuthentication(
+        authString: string,
+        display: string
+    ) {
         if (authString === ".swiftink-manage-account-btn") {
-            return document
-                .querySelectorAll(authString)
-                .forEach((element) => {
-                    element.innerHTML = `Manage ${this.user?.email}`;
-                });
-        }
-        else {
-            return document
-                .querySelectorAll(authString)
-                .forEach((element) => {
-                    element.setAttribute(
-                        "style",
-                        display,
-                    );
-                });
+            return document.querySelectorAll(authString).forEach((element) => {
+                element.innerHTML = `Manage ${this.user?.email}`;
+            });
+        } else {
+            return document.querySelectorAll(authString).forEach((element) => {
+                element.setAttribute("style", display);
+            });
         }
     }
 
-    private pendingCommand: { file: TFile | TFile[], parentFile: TFile } | null = null;
 
-    private async executePendingCommand(pendingCommand: { file: TFile | TFile[], parentFile: TFile }) {
-        // Additional checks or setup before starting the transcription process
-
+    // Modify your executePendingCommand method to store the ongoing task
+    private async executePendingCommand(pendingCommand: {
+        file?: TFile;
+        parentFile: TFile;
+    }) {
         try {
-            const filesToTranscribe = Array.isArray(pendingCommand.file) ? pendingCommand.file : [pendingCommand.file];
+            // Check if the user is authenticated
+            const session = await this.supabase.auth
+                .getSession()
+                .then((res) => {
+                    return res.data;
+                });
+
+            if (!session || !session.session) {
+                throw new Error("User not authenticated.");
+            }
+
+            if (pendingCommand?.file) {
+
+                const abortController = new AbortController();
+                const task = this.transcribeAndWrite(
+                    pendingCommand.parentFile,
+                    pendingCommand.file,
+                    abortController
+                );
+                this.ongoingTranscriptionTasks.push({
+                    task,
+                    abortController,
+                });
+                await task;
 
 
-            for (const file of filesToTranscribe) {
-                await this.authenticateAndTranscribe(file, pendingCommand.parentFile);
+            } else {
+
+                const filesToTranscribe = await this.getTranscribeableFiles(
+                    pendingCommand.parentFile
+                );
+                for (const fileToTranscribe of filesToTranscribe) {
+                    const abortController = new AbortController();
+                    const task = this.transcribeAndWrite(pendingCommand.parentFile, fileToTranscribe, abortController);
+                    this.ongoingTranscriptionTasks.push({ task, abortController });
+                    await task;
+                }
 
             }
+
+
         } catch (error) {
             console.error("Error during transcription process:", error);
         }
     }
 
-    public async authenticateAndTranscribe(file: TFile, parentFile: TFile) {
-        // Check if the user is authenticated
-        const session = await this.supabase.auth.getSession().then((res) => {
-            return res.data;
-        });
+    public getTranscribeableFiles = async (file: TFile) => {
+        // Get all linked files in the markdown file
+        const filesLinked = Object.keys(
+            this.app.metadataCache.resolvedLinks[file.path]
+        );
 
-        if (!session || !session.session) {
-            throw new Error("User not authenticated.");
+        // Now that we have all the files linked in the markdown file, we need to filter them by the file extensions we want to transcribe
+        const filesToTranscribe: TFile[] = [];
+        for (const linkedFilePath of filesLinked) {
+            const linkedFileExtension = linkedFilePath.split(".").pop();
+            if (
+                linkedFileExtension === undefined ||
+                !Transcription.transcribeFileExtensions.includes(
+                    linkedFileExtension.toLowerCase()
+                )
+            ) {
+                if (this.settings.debug)
+                    console.log(
+                        "Skipping " +
+                        linkedFilePath +
+                        " because the file extension is not in the list of transcribeable file extensions"
+                    );
+                continue;
+            }
+
+            // We now know that the file extension is in the list of transcribeable file extensions
+            const linkedFile =
+                this.app.vault.getAbstractFileByPath(linkedFilePath);
+
+            // Validate that we are dealing with a file and add it to the list of verified files to transcribe
+            if (linkedFile instanceof TFile) filesToTranscribe.push(linkedFile);
+            else {
+                if (this.settings.debug)
+                    console.log("Could not find file " + linkedFilePath);
+                continue;
+            }
         }
+        return filesToTranscribe;
+    };
+
+    public async transcribeAndWrite(
+        parent_file: TFile,
+        file: TFile,
+        abortController: AbortController | null
+    ) {
+        try {
+
+            if (this.settings.debug) console.log("Transcribing " + file.path);
+
+            const transcription =
+                await this.transcriptionEngine.getTranscription(file);
 
 
-        // Perform transcription after successful authentication
-        await this.transcribeAndWrite(parentFile, file);
-    }
 
-    // Define transcribeAndWrite as a class method
-    public async transcribeAndWrite(parent_file: TFile, file: TFile) {
-        if (this.settings.debug) console.log("Transcribing " + file.path);
+            let fileText = await this.app.vault.read(parent_file);
+            const fileLinkString = this.app.metadataCache.fileToLinktext(
+                file,
+                parent_file.path
+            );
+            const fileLinkStringTagged = `[[${fileLinkString}]]`;
 
-        this.transcriptionEngine
-            .getTranscription(file)
-            .then(async (transcription) => {
-                let fileText = await this.app.vault.read(parent_file);
-                const fileLinkString =
-                    this.app.metadataCache.fileToLinktext(
-                        file,
-                        parent_file.path,
-                    );
-                const fileLinkStringTagged = `[[${fileLinkString}]]`;
+            const startReplacementIndex =
+                fileText.indexOf(fileLinkStringTagged) +
+                fileLinkStringTagged.length;
 
-                const startReplacementIndex =
-                    fileText.indexOf(fileLinkStringTagged) +
-                    fileLinkStringTagged.length;
+            fileText = [
+                fileText.slice(0, startReplacementIndex),
+                `\n${transcription}`,
+                fileText.slice(startReplacementIndex),
+            ].join("");
 
-                fileText = [
-                    fileText.slice(0, startReplacementIndex),
-                    `\n${transcription}`,
-                    fileText.slice(startReplacementIndex),
-                ].join("");
+            //check if abortion signal is aborted
 
-                await this.app.vault.modify(parent_file, fileText);
-            })
-            .catch((error) => {
-                // First check if 402 is in the error message, if so alert the user that they need to pay
-                if (
-                    error &&
-                    error?.message &&
-                    error?.message.includes("402")
-                ) {
-                    new Notice(
-                        "You have exceeded the free tier. Please upgrade to a paid plan at swiftink.io/pricing to continue transcribing files. Thanks for using Swiftink!",
-                        10000,
-                    );
-                } else {
-                    if (this.settings.debug) console.log(error);
-                    new Notice(`Error transcribing file: ${error}`, 10000);
-                }
-            });
+            if (abortController?.signal?.aborted) {
+                new Notice(`Transcription of ${file.name} cancelled!`, 5 * 1000);
+                return;
+            }
+
+            await this.app.vault.modify(parent_file, fileText);
+        } catch (error) {
+            // First check if 402 is in the error message, if so alert the user that they need to pay
+
+            if (error?.message?.includes("402")) {
+
+                new Notice(
+                    "You have exceeded the free tier.\nPlease upgrade to a paid plan at swiftink.io/pricing to continue transcribing files.\nThanks for using Swiftink!"
+                    , 10 * 1000
+                );
+            } else {
+                if (this.settings.debug) console.log(error);
+                new Notice(`Error transcribing file: ${error}`, 10 * 1000);
+            }
+        } finally {
+            // Clear the AbortController after completion or cancellation
+            abortController = null;
+        }
     }
 
     onFileMenu(menu: Menu, file: TFile) {
@@ -180,30 +251,43 @@ export default class Transcription extends Plugin {
             const fileExtension = file.extension?.toLowerCase();
 
             // Check if the file extension is in the allowed list
-            if (fileExtension && Transcription.transcribeFileExtensions.includes(fileExtension)) {
+            if (
+                fileExtension &&
+                Transcription.transcribeFileExtensions.includes(fileExtension)
+            ) {
                 // Add a new item to the right-click menu
                 menu.addItem((item) => {
                     item
-                        .setTitle('Transcribe')
-                        .setIcon('headphones')
+                        .setTitle("Transcribe")
+                        .setIcon("headphones")
                         .onClick(async () => {
 
-                            if (this.user == null) {
+
+                            if (this.user == null && this.settings.transcriptionEngine == IS_SWIFTINK) {
                                 this.pendingCommand = {
                                     file: file,
                                     parentFile: parentFile,
                                 };
                                 // Redirect to sign-in
-                                window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
+                                window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
                             }
                             // Handle the click event
-                            await this.transcribeAndWrite(parentFile, file);
+                            const abortController = new AbortController();
+                            const task = this.transcribeAndWrite(
+                                parentFile,
+                                file,
+                                abortController
+                            );
+                            this.ongoingTranscriptionTasks.push({
+                                task,
+                                abortController,
+                            });
+                            await task;
                         });
                 });
             }
         }
     }
-
 
 
     async onload() {
@@ -218,7 +302,8 @@ export default class Transcription extends Plugin {
             this.app.vault,
             this.statusBar,
             this.supabase,
-            this.app
+            this.app,
+
         );
 
         // Prompt the user to sign in if the have Swiftink selected and are not signed in
@@ -230,7 +315,7 @@ export default class Transcription extends Plugin {
                 // First try setting the access token and refresh token from the settings
                 if (this.settings.debug)
                     console.log(
-                        "Trying to set access token and refresh token from settings",
+                        "Trying to set access token and refresh token from settings"
                     );
                 if (
                     this.settings.swiftink_access_token != null &&
@@ -253,13 +338,15 @@ export default class Transcription extends Plugin {
                     const noticeContent = document.createDocumentFragment();
 
                     // Create the text node
-                    const textNode = document.createTextNode("Transcription: You are signed out. Please ");
+                    const textNode = document.createTextNode(
+                        "Transcription: You are signed out. Please "
+                    );
 
                     // Create the hyperlink
-                    const signInLink = document.createElement('a');
+                    const signInLink = document.createElement("a");
                     //signInLink.href = SWIFTINK_AUTH_CALLBACK;
-                    signInLink.target = '_blank';
-                    signInLink.textContent = 'Sign In';
+                    signInLink.target = "_blank";
+                    signInLink.textContent = "Sign In";
 
                     // Append the text and link to the document fragment
                     noticeContent.appendChild(textNode);
@@ -267,20 +354,17 @@ export default class Transcription extends Plugin {
 
                     // Create the notice with the content
                     const notice = new Notice(noticeContent, 16 * 1000);
-                    notice.noticeEl.addEventListener('click', () => {
-                        window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
+                    notice.noticeEl.addEventListener("click", () => {
+                        window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
                     });
                 }
-
-
-
             }
         }
 
         if (!Platform.isMobileApp) {
             this.statusBar = new StatusBar(this.addStatusBarItem());
             this.registerInterval(
-                window.setInterval(() => this.statusBar.display(), 1000),
+                window.setInterval(() => this.statusBar.display(), 1000)
             );
         }
 
@@ -289,47 +373,37 @@ export default class Transcription extends Plugin {
             this.app.workspace.on("file-menu", this.onFileMenu.bind(this))
         );
 
-        const getTranscribeableFiles = (file: TFile) => {
-            // Get all linked files in the markdown file
-            const filesLinked = Object.keys(
-                this.app.metadataCache.resolvedLinks[file.path],
-            );
 
-            // Now that we have all the files linked in the markdown file, we need to filter them by the file extensions we want to transcribe
-            const filesToTranscribe: TFile[] = [];
-            for (const linkedFilePath of filesLinked) {
-                const linkedFileExtension = linkedFilePath.split(".").pop();
-                if (
-                    linkedFileExtension === undefined ||
-                    !Transcription.transcribeFileExtensions.includes(
-                        linkedFileExtension.toLowerCase(),
-                    )
-                ) {
-                    if (this.settings.debug)
-                        console.log(
-                            "Skipping " +
-                            linkedFilePath +
-                            " because the file extension is not in the list of transcribeable file extensions",
-                        );
-                    continue;
+
+        this.addCommand({
+            id: "obsidian-transcription-stop",
+            name: "Stop Transcription",
+            editorCallback: async () => {
+                try {
+                    // Check if there is an ongoing transcription task
+                    if (this.ongoingTranscriptionTasks.length > 0) {
+
+                        console.log("Stopping ongoing transcription...");
+
+                        // Loop through each ongoing task and signal abort
+                        for (const { abortController, task } of this.ongoingTranscriptionTasks) {
+                            abortController.abort();
+                            await task.catch(() => { }); // Catch any errors during abortion
+                        }
+
+                        // Clear the ongoing transcription tasks after completion or cancellation
+                        this.ongoingTranscriptionTasks = [];
+                    }
+                    else {
+                        new Notice("No ongoing transcription to stop", 5 * 1000)
+
+                    }
+                } catch (error) {
+                    console.error("Error stopping transcription:", error);
                 }
 
-                // We now know that the file extension is in the list of transcribeable file extensions
-                const linkedFile =
-                    this.app.vault.getAbstractFileByPath(linkedFilePath);
-
-                // Validate that we are dealing with a file and add it to the list of verified files to transcribe
-                if (linkedFile instanceof TFile)
-                    filesToTranscribe.push(linkedFile);
-                else {
-                    if (this.settings.debug)
-                        console.log("Could not find file " + linkedFilePath);
-                    continue;
-                }
-            }
-            return filesToTranscribe;
-        };
-
+            },
+        });
 
         this.addCommand({
             id: "obsidian-transcription-transcribe-all-in-view",
@@ -337,36 +411,31 @@ export default class Transcription extends Plugin {
             editorCallback: async (editor: Editor, view: MarkdownView) => {
                 if (view.file === null) return;
 
-                if (this.user == null) {
+                const filesToTranscribe = await this.getTranscribeableFiles(view.file);
+                const fileNames = filesToTranscribe.map((file) => file.name).join(", ");
+                new Notice(`Files Selected: ${fileNames}`, 5 * 1000);
+
+
+                if (this.user == null && this.settings.transcriptionEngine == IS_SWIFTINK) {
 
                     this.pendingCommand = {
-                        file: getTranscribeableFiles(view.file),
                         parentFile: view.file,
                     };
 
-                    // Redirect to sign-in
-                    window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
-                    if (Array.isArray(this.pendingCommand.file)) {
-                        const fileNames = this.pendingCommand.file.map(file => file.name).join(", ");
-                        new Notice(`Files Selected: ${fileNames}`, 5000);
-                    }
-                }
-                else {
-                    const filesToTranscribe = getTranscribeableFiles(view.file);
-                    const fileNames = filesToTranscribe.map(file => file.name).join(", ");
-                    new Notice(
-                        `Files Selected: ${fileNames}`,
-                        5000,
-                    );
+                    window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
+                } else {
 
-                    // Now that we have all the files to transcribe, we can transcribe them
                     for (const fileToTranscribe of filesToTranscribe) {
-                        this.transcribeAndWrite(view.file, fileToTranscribe);
+                        const abortController = new AbortController();
+                        const task = this.transcribeAndWrite(view.file, fileToTranscribe, abortController);
+                        this.ongoingTranscriptionTasks.push({ task, abortController });
+                        await task;
                     }
-                }
 
+                }
             },
         });
+
 
         this.addCommand({
             id: "obsidian-transcription-transcribe-specific-file-in-view",
@@ -375,15 +444,17 @@ export default class Transcription extends Plugin {
                 // Get the current filepath
                 if (view.file === null) return;
 
-                const filesToTranscribe = getTranscribeableFiles(view.file);
+                const filesToTranscribe = await this.getTranscribeableFiles(view.file);
 
                 // Now that we have all the files to transcribe, we can prompt the user to choose which one they want to transcribe
 
                 class FileSelectionModal extends FuzzySuggestModal<TFile> {
-
                     public transcriptionInstance: Transcription; // Reference to Transcription instance
 
-                    constructor(app: App, transcriptionInstance: Transcription) {
+                    constructor(
+                        app: App,
+                        transcriptionInstance: Transcription
+                    ) {
                         super(app);
                         this.transcriptionInstance = transcriptionInstance;
                     }
@@ -396,30 +467,40 @@ export default class Transcription extends Plugin {
                         return file.name;
                     }
 
-                    onChooseItem(file: TFile) {
+                    async onChooseItem(file: TFile) {
+
                         if (view.file === null) return;
-                        new Notice(`File Selected: ${file.name}`, 5000);
-                        if (this.transcriptionInstance.user == null) {
+
+                        new Notice(`File Selected: ${file.name}`, 5 * 1000);
+
+
+                        if (this.transcriptionInstance.user == null && this.transcriptionInstance.settings.transcriptionEngine == IS_SWIFTINK) {
                             this.transcriptionInstance.pendingCommand = {
                                 file: file,
                                 parentFile: view.file,
                             };
 
                             // Redirect to sign-in
-                            window.open(SWIFTINK_AUTH_CALLBACK, '_blank');
-
+                            window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
                         } else {
-                            this.transcriptionInstance.transcribeAndWrite(view.file, file);
+                            const abortController = new AbortController();
+                            const task = this.transcriptionInstance.transcribeAndWrite(
+                                view.file,
+                                file,
+                                abortController
+                            );
+                            this.transcriptionInstance.ongoingTranscriptionTasks.push({
+                                task,
+                                abortController,
+                            });
+                            await task;
                         }
-
                     }
                 }
 
                 new FileSelectionModal(this.app, this).open();
-
             },
         });
-
 
         // Register a command to transcribe a media file when right-clicking on it
         // this.registerEvent(
@@ -461,7 +542,7 @@ export default class Transcription extends Plugin {
 
                 if (!access_token || !refresh_token) {
                     new Notice(
-                        "Transcription: Error authenticating with Swiftink.io",
+                        "Transcription: Error authenticating with Swiftink.io"
                     );
                     return;
                 }
@@ -482,15 +563,27 @@ export default class Transcription extends Plugin {
 
                 // Show the settings for user auth/unauth based on whether the user is signed in
                 if (this.user == null) {
-                    this.querySelectionOnAuthentication(".swiftink-unauthed-only", "display: block !important");
-                    this.querySelectionOnAuthentication(".swiftink-authed-only", "display: none !important");
-
+                    this.querySelectionOnAuthentication(
+                        ".swiftink-unauthed-only",
+                        "display: block !important"
+                    );
+                    this.querySelectionOnAuthentication(
+                        ".swiftink-authed-only",
+                        "display: none !important"
+                    );
                 } else {
-                    this.querySelectionOnAuthentication(".swiftink-unauthed-only", "display: none !important");
-                    this.querySelectionOnAuthentication(".swiftink-authed-only", "display: block !important");
-                    // Also set the user's email in the settings tab
-                    this.querySelectionOnAuthentication(".swiftink-manage-account-btn", "");
-
+                    this.querySelectionOnAuthentication(
+                        ".swiftink-unauthed-only",
+                        "display: none !important"
+                    );
+                    this.querySelectionOnAuthentication(
+                        ".swiftink-authed-only",
+                        "display: block !important"
+                    );
+                    this.querySelectionOnAuthentication(
+                        ".swiftink-manage-account-btn",
+                        ""
+                    );
                 }
 
                 // Execute the pending command if there is one
@@ -500,7 +593,7 @@ export default class Transcription extends Plugin {
                 }
 
                 return;
-            },
+            }
         );
 
         this.registerObsidianProtocolHandler(
@@ -534,14 +627,14 @@ export default class Transcription extends Plugin {
                         if (function_name == "View on Swiftink.io") {
                             window.open(
                                 "https://swiftink.io/dashboard/",
-                                "_blank",
+                                "_blank"
                             );
                         }
                     }
                 }
 
                 new SwiftinkTranscriptFunctionsModal(this.app).open();
-            },
+            }
         );
     }
 
@@ -554,15 +647,13 @@ export default class Transcription extends Plugin {
         this.settings = Object.assign(
             {},
             DEFAULT_SETTINGS,
-            await this.loadData(),
+            await this.loadData()
         );
     }
 
     async saveSettings() {
         await this.saveData(this.settings);
     }
-
-
 }
 
 export { Transcription };
