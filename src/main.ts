@@ -10,6 +10,7 @@ import {
     FuzzySuggestModal,
     App,
     Menu,
+    Modal
 } from "obsidian";
 import { TranscriptionEngine } from "./transcribe";
 import { StatusBar } from "./status";
@@ -23,6 +24,7 @@ import {
     SUPABASE_KEY,
     IS_SWIFTINK
 } from "./settings";
+import { FileLink } from "./fileLink";
 
 
 export default class Transcription extends Plugin {
@@ -39,7 +41,7 @@ export default class Transcription extends Plugin {
         task: Promise<void>;
         abortController: AbortController;
     }> = [];
-    private static transcribeFileExtensions: string[] = [
+    public static transcribeFileExtensions: string[] = [
         "mp3",
         "wav",
         "webm",
@@ -372,6 +374,67 @@ export default class Transcription extends Plugin {
         this.registerEvent(
             this.app.workspace.on("file-menu", this.onFileMenu.bind(this))
         );
+
+        this.addCommand({
+            id: "obsidian-transcription-add-file",
+            name: "Add File to Transcription",
+            editorCallback: async () => {
+
+                class FileSelectionModal extends Modal {
+
+
+                    onOpen() {
+                        const { contentEl } = this;
+                        contentEl.createEl("h2", { text: "Select files:" });
+                        const input = contentEl.createEl("input", {
+                            type: "file",
+                            attr: { multiple: "" },
+                        });
+                        contentEl.createEl("br");
+                        contentEl.createEl("br");
+                        const button = contentEl.createEl("button", { text: "Add file link" });
+                        button.addEventListener("click", () => {
+                            const fileList = input.files;
+                            if (fileList) {
+                                const files = Array.from(fileList);
+                                let path = ""
+                                for (const file of files) {
+                                    //     console.log(file)
+                                    //@ts-ignore
+                                    path = this.app.vault.getResourcePath(file).toString();
+                                    //console.log(path.toString())
+                                }
+                                // this.app.vault.copy
+
+                                // //@ts-ignore
+                                // let attachementFolder = this.app.vault.config.attachmentFolderPath;
+                                //@ts-ignore
+                                const basePath = this.app.vault.adapter.basePath;
+                                // console.log(attachementFolder);
+                                // console.log(basePath);
+
+                                const fe = new FileLink(
+                                    path,
+                                    basePath,
+                                );
+
+                                files.forEach((file: File) => {
+                                    fe.embedFile(file)
+                                })
+                            }
+
+
+                        })
+
+                    }
+                }
+                new FileSelectionModal(this.app).open();
+            }
+
+
+
+
+        });
 
 
 
