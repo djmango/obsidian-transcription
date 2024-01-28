@@ -213,9 +213,9 @@ export default class Transcription extends Plugin {
 
             fileText = [
                 fileText.slice(0, startReplacementIndex),
-                `\n${transcription}`,
+                `${transcription}`,
                 fileText.slice(startReplacementIndex),
-            ].join("");
+            ].join(" ");
 
             //check if abortion signal is aborted
 
