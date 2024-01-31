@@ -16,7 +16,7 @@ interface TranscriptionSettings {
     embedKeywords: boolean;
     swiftink_access_token: string | null;
     swiftink_refresh_token: string | null;
-    lineSpacing: "single" | "multi";
+    lineSpacing: string;
 }
 
 const SWIFTINK_AUTH_CALLBACK =
