@@ -16,8 +16,7 @@ interface TranscriptionSettings {
     embedKeywords: boolean;
     swiftink_access_token: string | null;
     swiftink_refresh_token: string | null;
-
-
+    lineSpacing: string;
 }
 
 const SWIFTINK_AUTH_CALLBACK =
@@ -43,7 +42,7 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
     embedKeywords: true,
     swiftink_access_token: null,
     swiftink_refresh_token: null,
-
+    lineSpacing: "multi",
 };
 
 const LANGUAGES = {
@@ -230,6 +229,22 @@ class TranscriptionSettingTab extends PluginSettingTab {
                 dropdown.setValue(this.plugin.settings.language);
                 dropdown.onChange(async (value) => {
                     this.plugin.settings.language = value;
+                    await this.plugin.saveSettings();
+                });
+            });
+
+        new Setting(containerEl)
+            .setName("Line Spacing")
+            .setDesc("Which line spacing mode to use")
+            .setTooltip(
+                "Defaults to multi-line, as returned by the transcription engine"
+            )
+            .addDropdown((dropdown) => {
+                dropdown.addOption("multi", "Multi-line");
+                dropdown.addOption("single", "Single-line");
+                dropdown.setValue(this.plugin.settings.lineSpacing);
+                dropdown.onChange(async (value) => {
+                    this.plugin.settings.lineSpacing = value;
                     await this.plugin.saveSettings();
                 });
             });

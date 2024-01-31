@@ -211,11 +211,19 @@ export default class Transcription extends Plugin {
                 fileText.indexOf(fileLinkStringTagged) +
                 fileLinkStringTagged.length;
 
-            fileText = [
-                fileText.slice(0, startReplacementIndex),
-                `\n${transcription}`,
-                fileText.slice(startReplacementIndex),
-            ].join("");
+                if (this.settings.lineSpacing === "single") {
+                    fileText = [
+                        fileText.slice(0, startReplacementIndex),
+                        `${transcription}`,
+                        fileText.slice(startReplacementIndex),
+                    ].join(" ");
+                } else {
+                    fileText = [
+                        fileText.slice(0, startReplacementIndex),
+                        `\n${transcription}`,
+                        fileText.slice(startReplacementIndex),
+                    ].join("");
+                }
 
             //check if abortion signal is aborted
 
