@@ -2,6 +2,10 @@
 
 Transcription 3.0, with [Swiftink.io](https://www.swiftink.io/) domain-aware speech-to-text! Create high-quality text transcriptions from any media file, on any device. Best-in-class ASR via [OpenAI Whisper](https://openai.com/blog/whisper/).
 
+## NOTE
+
+If you are experiencing issues with logging in to Swiftink, please update the plugin to the latest version.
+
 ![Demo](media/demo.gif)
 
 ## Features
@@ -28,4 +32,3 @@ Contact me by [email](mailto:sulaiman@swiftink.io) at or on Twitter [@sulaimangh
 ## Credits
 
 -   [Whisper ASR](https://github.com/ahmetoner/whisper-asr-webservice) by Ahmed, for the easy-to-use Whisper webservice backend
-

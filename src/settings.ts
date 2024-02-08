@@ -22,7 +22,7 @@ interface TranscriptionSettings {
 const SWIFTINK_AUTH_CALLBACK =
     "https://swiftink.io/login/?callback=obsidian://swiftink_auth";
 
-const SUPABASE_URL = "https://auth.swiftink.io";
+const SUPABASE_URL = "https://vcdeqgrsqaexpnogauly.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjZGVxZ3JzcWFleHBub2dhdWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODU2OTM4NDUsImV4cCI6MjAwMTI2OTg0NX0.BBxpvuejw_E-Q_g6SU6G6sGP_6r4KnrP-vHV2JZpAho";
 const API_BASE = "https://api.swiftink.io";
 const IS_SWIFTINK = "swiftink";

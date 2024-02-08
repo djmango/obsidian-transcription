@@ -142,7 +142,7 @@ export class TranscriptionEngine {
 
         const uploadPromise = new Promise<tus.Upload>((resolve) => {
             const upload = new tus.Upload(new Blob([fileStream]), {
-                endpoint: `https://auth.swiftink.io/storage/v1/upload/resumable`,
+                endpoint: `https://vcdeqgrsqaexpnogauly.supabase.co/storage/v1/upload/resumable`,
                 retryDelays: [0, 3000, 5000, 10000, 20000],
                 headers: {
                     authorization: `Bearer ${token}`,
@@ -215,7 +215,7 @@ export class TranscriptionEngine {
         // Declare progress notice for transcription
         let transcriptionProgressNotice: Notice | null = null;
 
-        const fileUrl = `https://auth.swiftink.io/storage/v1/object/public/swiftink-upload/${id}/${filename}`;
+        const fileUrl = `https://vcdeqgrsqaexpnogauly.supabase.co/storage/v1/object/public/swiftink-upload/${id}/${filename}`;
         const url = `${API_BASE}/transcripts/`;
         const headers = { Authorization: `Bearer ${token}` };
         const body: paths["/transcripts/"]["post"]["requestBody"]["content"]["application/json"] =
