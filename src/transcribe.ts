@@ -99,27 +99,35 @@ export class TranscriptionEngine {
         if (this.settings.language != "auto") args += `&language=${this.settings.language}`;
         if (this.settings.initialPrompt) args += `&initial_prompt=${this.settings.initialPrompt}`;
 
-        const url = `${this.settings.whisperASRUrl}/asr?${args}`;
-        console.log("URL:", url);
+        const urls = this.settings.whisperASRUrls
+            .split(";")
+            .filter(Boolean); // Remove empty strings
 
-        const options: RequestUrlParam = {
-            method: "POST",
-            url: url,
-            contentType: `multipart/form-data; boundary=----${boundary_string}`,
-            body: request_body,
-        };
-        console.log("Options:", options);
+        for (const baseUrl of urls) {
+            const url = `${baseUrl}/asr?${args}`;
+            console.log("Trying URL:", url);
 
-        return requestUrl(options)
-            .then(async (response) => {
+            const options: RequestUrlParam = {
+                method: "POST",
+                url: url,
+                contentType: `multipart/form-data; boundary=----${boundary_string}`,
+                body: request_body,
+            };
+
+            console.log("Options:", options);
+
+            try {
+                const response = await requestUrl(options);
                 if (this.settings.debug) console.log(response);
                 if (typeof response.text === "string") return response.text;
                 else return response.json.text;
-            })
-            .catch((error) => {
-                if (this.settings.debug) console.error(error);
-                return Promise.reject(error);
-            });
+            } catch (error) {
+                if (this.settings.debug) console.error("Error with URL:", url, error);
+                // Don't return or throw yet, try the next URL
+            }
+        }
+        // If all URLs fail, reject the promise with a generic error or the last specific error caught
+        return Promise.reject("All Whisper ASR URLs failed");
     }
 
     async getTranscriptionSwiftink(file: TFile): Promise<string> {
