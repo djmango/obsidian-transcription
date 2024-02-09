@@ -109,6 +109,8 @@ export class TranscriptionEngine {
                 body: request_body,
             };
 
+            console.log("Options:", options);
+
             try {
                 const response = await requestUrl(options);
                 if (this.settings.debug) console.log(response);
