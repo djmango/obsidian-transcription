@@ -149,8 +149,11 @@ export class TranscriptionEngine {
                         text: segment.text
                     }));
                     return this.segmentsToTimestampedString(segments, this.settings.timestampFormat);
+                } else if (preprocessed.segments) {
+                    // Concatenate all segments into a single string if no timestamps are required
+                    return preprocessed.segments.map((segment: WhisperASRSegment) => segment.text).join("\n");
                 } else {
-                    // Fallback to full text if no timestamps are required
+                    // Fallback to full text if no segments are there
                     return preprocessed.text;
                 }
             } catch (error) {
