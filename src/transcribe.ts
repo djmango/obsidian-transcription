@@ -90,8 +90,8 @@ export class TranscriptionEngine {
         const [request_body, boundary_string] =
             await payloadGenerator(payload_data);
 
-        // boolean parameters - easier and cleaner to always include them
         let args = `task=${this.settings.task}`;
+        // boolean parameters - always include
         args += `&encode=${this.settings.encode}`;
         args += `&vad_filter=${this.settings.vadFilter}`;
         args += `&word_timestamps=${this.settings.wordTimestamps}`;

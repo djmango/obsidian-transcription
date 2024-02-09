@@ -52,7 +52,7 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
     task: "transcribe",
     initialPrompt: "",
     vadFilter: false, // this doesn't seem to do anything in the current version of the Whisper ASR server
-    wordTimestamps: true, // this is false by default, but drastically improves the accuracy of the timestamps
+    wordTimestamps: true, // this is false by default on Whisper ASR, but makes the transcriptions look better
 };
 
 const LANGUAGES = {
