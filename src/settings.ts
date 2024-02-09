@@ -17,6 +17,11 @@ interface TranscriptionSettings {
     swiftink_access_token: string | null;
     swiftink_refresh_token: string | null;
     lineSpacing: string;
+    encode: boolean;
+    task: "transcribe" | "translate";
+    initialPrompt: string;
+    vadFilter: boolean;
+    wordTimestamps: boolean;
 }
 
 const SWIFTINK_AUTH_CALLBACK =
@@ -43,6 +48,11 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
     swiftink_access_token: null,
     swiftink_refresh_token: null,
     lineSpacing: "multi",
+    encode: true,
+    task: "transcribe",
+    initialPrompt: "",
+    vadFilter: false, // this doesn't seem to do anything in the current version of the Whisper ASR server
+    wordTimestamps: true, // this is false by default, but drastically improves the accuracy of the timestamps
 };
 
 const LANGUAGES = {
@@ -433,6 +443,73 @@ class TranscriptionSettingTab extends PluginSettingTab {
                     .setValue(this.plugin.settings.whisperASRUrl)
                     .onChange(async (value) => {
                         this.plugin.settings.whisperASRUrl = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Encode")
+            .setDesc("Encode audio first through ffmpeg")
+            .setClass("whisper-asr-settings")
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.encode)
+                    .onChange(async (value) => {
+                        this.plugin.settings.encode = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Task")
+            .setDesc("Task to perform")
+            .setClass("whisper-asr-settings")
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("transcribe", "Transcribe")
+                    .addOption("translate", "Translate")
+                    .setValue(this.plugin.settings.task)
+                    .onChange(async (value: "transcribe" | "translate") => {
+                        this.plugin.settings.task = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Initial prompt")
+            .setDesc("Model follows the style of the prompt, rather than any instructions contained within. 224 tokens max. More info at https://cookbook.openai.com/examples/whisper_prompting_guide")
+            .setClass("whisper-asr-settings")
+            .addTextArea((text) =>
+                text
+                    .setPlaceholder(DEFAULT_SETTINGS.initialPrompt)
+                    .setValue(this.plugin.settings.initialPrompt)
+                    .onChange(async (value) => {
+                        this.plugin.settings.initialPrompt = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Word timestamps")
+            .setDesc("Include timestamps for each word")
+            .setClass("whisper-asr-settings")
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.wordTimestamps)
+                    .onChange(async (value) => {
+                        this.plugin.settings.wordTimestamps = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("VAD filter")
+            .setDesc("Filter out silence from the audio")
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.vadFilter)
+                    .onChange(async (value) => {
+                        this.plugin.settings.vadFilter = value;
                         await this.plugin.saveSettings();
                     }),
             );

@@ -90,9 +90,14 @@ export class TranscriptionEngine {
         const [request_body, boundary_string] =
             await payloadGenerator(payload_data);
 
-        let args = "task=transcribe";
-        if (this.settings.language != "auto")
-            args += `&language=${this.settings.language}`;
+        // boolean parameters - easier and cleaner to always include them
+        let args = `task=${this.settings.task}`;
+        args += `&encode=${this.settings.encode}`;
+        args += `&vad_filter=${this.settings.vadFilter}`;
+        args += `&word_timestamps=${this.settings.wordTimestamps}`;
+        // string parameters - only include if they are not the default
+        if (this.settings.language != "auto") args += `&language=${this.settings.language}`;
+        if (this.settings.initialPrompt) args += `&initial_prompt=${this.settings.initialPrompt}`;
 
         const url = `${this.settings.whisperASRUrl}/asr?${args}`;
         console.log("URL:", url);
