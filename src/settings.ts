@@ -581,7 +581,6 @@ class TranscriptionSettingTab extends PluginSettingTab {
         }
 
         // Initially hide the settings that depend on timestamps based on whether timestamps are enabled
-        console.log({ timestamps: this.plugin.settings.timestamps });
         if (!this.plugin.settings.timestamps) {
             containerEl
                 .findAll(".depends-on-timestamps")
