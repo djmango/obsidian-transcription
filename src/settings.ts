@@ -505,6 +505,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("VAD filter")
             .setDesc("Filter out silence from the audio")
+            .setClass("whisper-asr-settings")
             .addToggle((toggle) =>
                 toggle
                     .setValue(this.plugin.settings.vadFilter)
