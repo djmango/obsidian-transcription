@@ -7,7 +7,7 @@ interface TranscriptionSettings {
     translate: boolean;
     language: string;
     verbosity: number;
-    whisperASRUrl: string;
+    whisperASRUrls: string;
     debug: boolean;
     transcriptionEngine: string;
     embedAdditionalFunctionality: boolean;
@@ -33,7 +33,7 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
     translate: false,
     language: "auto",
     verbosity: 1,
-    whisperASRUrl: "http://localhost:9000",
+    whisperASRUrls: "http://localhost:9000",
     debug: false,
     transcriptionEngine: "swiftink",
     embedAdditionalFunctionality: true,
@@ -422,17 +422,17 @@ class TranscriptionSettingTab extends PluginSettingTab {
             .setHeading();
 
         new Setting(containerEl)
-            .setName("Whisper ASR URL")
+            .setName("Whisper ASR URLs")
             .setDesc(
-                "The URL of the Whisper ASR server: https://github.com/ahmetoner/whisper-asr-webservice",
+                "The URL of the Whisper ASR server: https://github.com/ahmetoner/whisper-asr-webservice. Provide multiple URLs separated by semi-colons in case one is offline or not accessible. Tried in order.",
             )
             .setClass("whisper-asr-settings")
             .addText((text) =>
                 text
-                    .setPlaceholder(DEFAULT_SETTINGS.whisperASRUrl)
-                    .setValue(this.plugin.settings.whisperASRUrl)
+                    .setPlaceholder(DEFAULT_SETTINGS.whisperASRUrls)
+                    .setValue(this.plugin.settings.whisperASRUrls)
                     .onChange(async (value) => {
-                        this.plugin.settings.whisperASRUrl = value;
+                        this.plugin.settings.whisperASRUrls = value;
                         await this.plugin.saveSettings();
                     }),
             );
