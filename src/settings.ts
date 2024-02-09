@@ -33,7 +33,7 @@ const IS_SWIFTINK = "swiftink";
 
 const DEFAULT_SETTINGS: TranscriptionSettings = {
     timestamps: false,
-    timestampFormat: "HH:mm:ss",
+    timestampFormat: "auto",
     translate: false,
     language: "auto",
     verbosity: 1,
@@ -286,11 +286,12 @@ class TranscriptionSettingTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Timestamp format")
             .setDesc(
-                "Your choice of hours, minutes, and/or seconds in the timestamp",
+                "Your choice of hours, minutes, and/or seconds in the timestamp. Auto uses the shortest possible format.",
             )
             .setClass("depends-on-timestamps")
             .addDropdown((dropdown) =>
                 dropdown
+                    .addOption("auto", "Auto")
                     .addOption("HH:mm:ss", "HH:mm:ss")
                     .addOption("mm:ss", "mm:ss")
                     .addOption("ss", "ss")

@@ -44,22 +44,32 @@ export class TranscriptionEngine {
         segments: components["schemas"]["TimestampedTextSegment"][],
         timestampFormat: string,
     ): string {
+        let maxDuration = 0;
+
+        // Find the largest timestamp in the segments
+        segments.forEach(segment => {
+            maxDuration = Math.max(maxDuration, segment.end);
+        });
+
+        // Decide format based on maxDuration
+        const autoFormat = maxDuration < 3600 ? "mm:ss" : "HH:mm:ss";
+
         let transcription = "";
-        for (const segment of segments) {
+        segments.forEach(segment => {
             let start = new Date(segment.start * 1000);
             let end = new Date(segment.end * 1000);
 
-            start = new Date(
-                start.getTime() + start.getTimezoneOffset() * 60000,
-            );
+            start = new Date(start.getTime() + start.getTimezoneOffset() * 60000);
             end = new Date(end.getTime() + end.getTimezoneOffset() * 60000);
 
-            const start_formatted = format(start, timestampFormat);
-            const end_formatted = format(end, timestampFormat);
+            // Use autoFormat if timestampFormat is 'auto'
+            const formatToUse = timestampFormat === 'auto' ? autoFormat : timestampFormat;
+            const start_formatted = format(start, formatToUse);
+            const end_formatted = format(end, formatToUse);
 
             const segment_string = `${start_formatted} - ${end_formatted}: ${segment.text}\n`;
             transcription += segment_string;
-        }
+        });
         return transcription;
     }
 
