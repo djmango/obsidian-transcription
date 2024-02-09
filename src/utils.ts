@@ -1,5 +1,6 @@
 /* Utility functions for Obsidian Transcript */
 import { App, FileSystemAdapter, getBlobArrayBuffer } from "obsidian";
+import { WhisperASRResponse, WhisperASRSegment } from "./types/whisper-asr";
 
 export const randomString = (length: number) => Array(length + 1).join((Math.random().toString(36) + '00000000000000000').slice(2, 18)).slice(0, length)
 export const getAllLinesFromFile = (cache: string) => cache.split(/\r?\n/)
@@ -51,4 +52,39 @@ export async function payloadGenerator(payload_data: PayloadData): Promise<Paylo
     await Promise.all(chunks);
     chunks.push(new TextEncoder().encode(`${boundary}--\r\n`));
     return [await new Blob(chunks).arrayBuffer(), boundary_string];
+}
+
+/**
+ * Preprocesses the raw response from Whisper ASR into a more structured and typed format.
+ * @param rawResponse - The raw response object from Whisper ASR.
+ */
+export function preprocessWhisperASRResponse(rawResponse: any): WhisperASRResponse {
+    return {
+        language: rawResponse.language,
+        text: rawResponse.text,
+        segments: rawResponse.segments.map((segment: any) => {
+            const baseSegment = {
+                segmentIndex: segment[0],
+                seek: segment[1],
+                start: segment[2],
+                end: segment[3],
+                text: segment[4],
+                tokens: segment[5],
+                temperature: segment[6],
+                avg_logprob: segment[7],
+                compression_ratio: segment[8],
+                no_speech_prob: segment[9],
+                wordTimestamps: null,
+            } as WhisperASRSegment;
+            if (segment[10] !== null) { // easier to read than a ternary-destructured assignment
+                baseSegment.wordTimestamps = segment[10].map((wordTimestamp: any) => ({
+                    start: wordTimestamp[0],
+                    end: wordTimestamp[1],
+                    word: wordTimestamp[2],
+                    confidence: wordTimestamp[3],
+                }));
+            }
+            return baseSegment;
+        })
+    };
 }

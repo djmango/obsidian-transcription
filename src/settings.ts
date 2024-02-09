@@ -18,7 +18,6 @@ interface TranscriptionSettings {
     swiftink_refresh_token: string | null;
     lineSpacing: string;
     encode: boolean;
-    task: "transcribe" | "translate";
     initialPrompt: string;
     vadFilter: boolean;
     wordTimestamps: boolean;
@@ -49,10 +48,9 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
     swiftink_refresh_token: null,
     lineSpacing: "multi",
     encode: true,
-    task: "transcribe",
     initialPrompt: "",
     vadFilter: false, // this doesn't seem to do anything in the current version of the Whisper ASR server
-    wordTimestamps: true, // this is false by default on Whisper ASR, but makes the transcriptions look better
+    wordTimestamps: false,
 };
 
 const LANGUAGES = {
@@ -202,6 +200,15 @@ class TranscriptionSettingTab extends PluginSettingTab {
                                     element.style.display = "block";
                                 });
                         }
+                        // Hide the settings that depend on timestamps based on whether timestamps are enabled.
+                        // Just here to keep the UI up to date, TODO move this, and the rest to a separate function
+                        containerEl
+                            .findAll(".depends-on-timestamps")
+                            .forEach((element) => {
+                                element.style.display = this.plugin.settings.timestamps
+                                    ? "block"
+                                    : "none";
+                            });
                     }),
             );
 
@@ -258,6 +265,41 @@ class TranscriptionSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 });
             });
+        
+        new Setting(containerEl)
+            .setName("Enable timestamps")
+            .setDesc("Add timestamps to the beginning of each line")
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.timestamps)
+                    .onChange(async (value) => {
+                        this.plugin.settings.timestamps = value;
+                        await this.plugin.saveSettings();
+                        containerEl
+                            .findAll(".depends-on-timestamps")
+                            .forEach((element) => {
+                                element.style.display = value ? "block" : "none";
+                            });
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Timestamp format")
+            .setDesc(
+                "Your choice of hours, minutes, and/or seconds in the timestamp",
+            )
+            .setClass("depends-on-timestamps")
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("HH:mm:ss", "HH:mm:ss")
+                    .addOption("mm:ss", "mm:ss")
+                    .addOption("ss", "ss")
+                    .setValue(this.plugin.settings.timestampFormat)
+                    .onChange(async (value) => {
+                        this.plugin.settings.timestampFormat = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
 
         new Setting(containerEl)
             .setName("Swiftink Settings")
@@ -329,37 +371,6 @@ class TranscriptionSettingTab extends PluginSettingTab {
             });
 
         new Setting(containerEl)
-            .setName("Enable timestamps")
-            .setDesc("Add timestamps to the beginning of each line")
-            .setClass("swiftink-settings")
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.timestamps)
-                    .onChange(async (value) => {
-                        this.plugin.settings.timestamps = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Timestamp format")
-            .setDesc(
-                "Your choice of hours, minutes, and/or seconds in the timestamp",
-            )
-            .setClass("swiftink-settings")
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOption("HH:mm:ss", "HH:mm:ss")
-                    .addOption("mm:ss", "mm:ss")
-                    .addOption("ss", "ss")
-                    .setValue(this.plugin.settings.timestampFormat)
-                    .onChange(async (value) => {
-                        this.plugin.settings.timestampFormat = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
             .setName("Embed summary")
             .setDesc("Embed the generated transcription summary in the note")
             .setTooltip(
@@ -377,7 +388,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Embed outline")
-            .setDesc("Embed the generated trancription outline in the note")
+            .setDesc("Embed the generated transcription outline in the note")
             .setTooltip(
                 "This will only work if you have a Swiftink Pro account",
             )
@@ -461,21 +472,6 @@ class TranscriptionSettingTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
-            .setName("Task")
-            .setDesc("Task to perform")
-            .setClass("whisper-asr-settings")
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOption("transcribe", "Transcribe")
-                    .addOption("translate", "Translate")
-                    .setValue(this.plugin.settings.task)
-                    .onChange(async (value: "transcribe" | "translate") => {
-                        this.plugin.settings.task = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
             .setName("Initial prompt")
             .setDesc("Model follows the style of the prompt, rather than any instructions contained within. 224 tokens max. More info at https://cookbook.openai.com/examples/whisper_prompting_guide")
             .setClass("whisper-asr-settings")
@@ -491,8 +487,9 @@ class TranscriptionSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Word timestamps")
-            .setDesc("Include timestamps for each word")
+            .setDesc("Include timestamps for each word, can get very verbose! Only works if timestamps are enabled.")
             .setClass("whisper-asr-settings")
+            .setClass("depends-on-timestamps")
             .addToggle((toggle) =>
                 toggle
                     .setValue(this.plugin.settings.wordTimestamps)
@@ -581,6 +578,16 @@ class TranscriptionSettingTab extends PluginSettingTab {
             containerEl.findAll(".whisper-asr-settings").forEach((element) => {
                 element.style.display = "block";
             });
+        }
+
+        // Initially hide the settings that depend on timestamps based on whether timestamps are enabled
+        console.log({ timestamps: this.plugin.settings.timestamps });
+        if (!this.plugin.settings.timestamps) {
+            containerEl
+                .findAll(".depends-on-timestamps")
+                .forEach((element) => {
+                    element.style.display = "none";
+                });
         }
 
         // Initially hide the settings for user auth/unauth based on whether the user is signed in
