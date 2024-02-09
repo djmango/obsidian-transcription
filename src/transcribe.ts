@@ -1,4 +1,4 @@
-import { TranscriptionSettings, /*SWIFTINK_AUTH_CALLBACK*/ API_BASE } from "src/settings";
+import { TranscriptionSettings, /*SWIFTINK_AUTH_CALLBACK*/ API_BASE, DEFAULT_SETTINGS } from "src/settings";
 import { Notice, requestUrl, RequestUrlParam, TFile, Vault, App } from "obsidian";
 import { format } from "date-fns";
 import { paths, components } from "./types/swiftink";
