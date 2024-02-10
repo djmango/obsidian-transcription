@@ -43,6 +43,7 @@ export class TranscriptionEngine {
     segmentsToTimestampedString(
         segments: components["schemas"]["TimestampedTextSegment"][],
         timestampFormat: string,
+        interval: number = 0 // in seconds, default is 0 which means no interval adjustment
     ): string {
         let maxDuration = 0;
 
@@ -55,21 +56,52 @@ export class TranscriptionEngine {
         const autoFormat = maxDuration < 3600 ? "mm:ss" : "HH:mm:ss";
 
         let transcription = "";
-        segments.forEach(segment => {
-            let start = new Date(segment.start * 1000);
-            let end = new Date(segment.end * 1000);
 
-            start = new Date(start.getTime() + start.getTimezoneOffset() * 60000);
-            end = new Date(end.getTime() + end.getTimezoneOffset() * 60000);
+        if (interval > 0) {
+            // Group segments based on interval
+            const groupedSegments: Record<string, { start: number, end: number, texts: string[] }> = {};
+            segments.forEach(segment => {
+                // Determine which interval the segment's start time falls into
+                const intervalStart = Math.floor(segment.start / interval) * interval;
+                if (!groupedSegments[intervalStart]) {
+                    groupedSegments[intervalStart] = {
+                        start: segment.start,
+                        end: segment.end,
+                        texts: [segment.text]
+                    };
+                } else {
+                    groupedSegments[intervalStart].end = Math.max(groupedSegments[intervalStart].end, segment.end);
+                    groupedSegments[intervalStart].texts.push(segment.text);
+                }
+            });
 
-            // Use autoFormat if timestampFormat is 'auto'
-            const formatToUse = timestampFormat === 'auto' ? autoFormat : timestampFormat;
-            const start_formatted = format(start, formatToUse);
-            const end_formatted = format(end, formatToUse);
+            // Format and append grouped segments
+            Object.values(groupedSegments).forEach(group => {
+                let start = new Date(group.start * 1000);
+                let end = new Date(group.end * 1000);
+                start = new Date(start.getTime() + start.getTimezoneOffset() * 60000);
+                end = new Date(end.getTime() + end.getTimezoneOffset() * 60000);
+                const formatToUse = timestampFormat === 'auto' ? autoFormat : timestampFormat;
+                const start_formatted = format(start, formatToUse);
+                const end_formatted = format(end, formatToUse);
+                const text = group.texts.join("").trim(); // spaces are already included in the segments
+                transcription += `${start_formatted} - ${end_formatted}: ${text}\n`;
+            });
+        } else {
+            // Default behavior: timestamp each segment individually
+            segments.forEach(segment => {
+                let start = new Date(segment.start * 1000);
+                let end = new Date(segment.end * 1000);
+                start = new Date(start.getTime() + start.getTimezoneOffset() * 60000);
+                end = new Date(end.getTime() + end.getTimezoneOffset() * 60000);
+                const formatToUse = timestampFormat === 'auto' ? autoFormat : timestampFormat;
+                const start_formatted = format(start, formatToUse);
+                const end_formatted = format(end, formatToUse);
+                const segment_string = `${start_formatted} - ${end_formatted}: ${segment.text.trim()}\n`;
+                transcription += segment_string;
+            });
+        }
 
-            const segment_string = `${start_formatted} - ${end_formatted}: ${segment.text}\n`;
-            transcription += segment_string;
-        });
         return transcription;
     }
 
@@ -102,11 +134,11 @@ export class TranscriptionEngine {
             await payloadGenerator(payload_data);
 
         let args = "output=json"; // always output json, so we can have the timestamps if we need them
+        args += `&word_timestamps=true`; // always output word timestamps, so we can have the timestamps if we need them
         const { translate, encode, vadFilter, timestamps, wordTimestamps, language, initialPrompt } = this.settings;
         if (translate) args += `&task=translate`;
         if (encode !== DEFAULT_SETTINGS.encode) args += `&encode=${encode}`;
         if (vadFilter !== DEFAULT_SETTINGS.vadFilter) args += `&vad_filter=${vadFilter}`;
-        if (timestamps && wordTimestamps !== DEFAULT_SETTINGS.wordTimestamps) args += `&word_timestamps=${wordTimestamps}`;
         if (language !== DEFAULT_SETTINGS.language) args += `&language=${language}`;
         if (initialPrompt) args += `&initial_prompt=${initialPrompt}`;
 
@@ -134,23 +166,24 @@ export class TranscriptionEngine {
                 const preprocessed = preprocessWhisperASRResponse(response.json);
                 if (this.settings.debug) console.log("Preprocessed response:", preprocessed);
 
-                if (
-                    this.settings.wordTimestamps
-                    && preprocessed.segments.some((segment: WhisperASRSegment) => segment.wordTimestamps)
-                ) {
-                    // Create segments for each word timestamp if word timestamps are available and enabled
-                    const wordSegments = preprocessed.segments
-                        .reduce((acc: components["schemas"]["TimestampedTextSegment"][], segment: WhisperASRSegment) => {
-                            if (segment.wordTimestamps) {
-                                acc.push(...segment.wordTimestamps.map(wordTimestamp => ({
-                                    start: wordTimestamp.start,
-                                    end: wordTimestamp.end,
-                                    text: wordTimestamp.word
-                                } as components["schemas"]["TimestampedTextSegment"])));
-                            }
-                            return acc;
-                        }, []);
+                // Create segments for each word timestamp if word timestamps are available
+                const wordSegments = preprocessed.segments
+                    .reduce((acc: components["schemas"]["TimestampedTextSegment"][], segment: WhisperASRSegment) => {
+                        if (segment.wordTimestamps) {
+                            acc.push(...segment.wordTimestamps.map(wordTimestamp => ({
+                                start: wordTimestamp.start,
+                                end: wordTimestamp.end,
+                                text: wordTimestamp.word
+                            } as components["schemas"]["TimestampedTextSegment"])));
+                        }
+                        return acc;
+                    }, []);
+
+                if (this.settings.wordTimestamps) {
                     return this.segmentsToTimestampedString(wordSegments, this.settings.timestampFormat);
+                } else if (parseInt(this.settings.timestampInterval)) {
+                    // Feed the function word segments with the interval
+                    return this.segmentsToTimestampedString(wordSegments, this.settings.timestampFormat, parseInt(this.settings.timestampInterval));
                 } else if (this.settings.timestamps) {
                     // Use existing segment-to-string functionality if only segment timestamps are needed
                     const segments = preprocessed.segments.map((segment: WhisperASRSegment) => ({
@@ -161,7 +194,10 @@ export class TranscriptionEngine {
                     return this.segmentsToTimestampedString(segments, this.settings.timestampFormat);
                 } else if (preprocessed.segments) {
                     // Concatenate all segments into a single string if no timestamps are required
-                    return preprocessed.segments.map((segment: WhisperASRSegment) => segment.text).join("\n");
+                    return preprocessed.segments
+                        .map((segment: WhisperASRSegment) => segment.text)
+                        .map(s => s.trim())
+                        .join("\n");
                 } else {
                     // Fallback to full text if no segments are there
                     return preprocessed.text;

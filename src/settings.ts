@@ -4,6 +4,7 @@ import { Transcription } from "./main";
 interface TranscriptionSettings {
     timestamps: boolean;
     timestampFormat: string;
+    timestampInterval: string; // easier to store as a string and convert to number when needed
     translate: boolean;
     language: string;
     verbosity: number;
@@ -34,6 +35,7 @@ const IS_SWIFTINK = "swiftink";
 const DEFAULT_SETTINGS: TranscriptionSettings = {
     timestamps: false,
     timestampFormat: "auto",
+    timestampInterval: "0",
     translate: false,
     language: "auto",
     verbosity: 1,
@@ -303,6 +305,26 @@ class TranscriptionSettingTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
+            .setName("Timestamp interval")
+            .setDesc("The interval at which to add timestamps, in seconds.")
+            .setClass("depends-on-timestamps")
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("0", "Off")
+                    .addOption("5", "5")
+                    .addOption("10", "10")
+                    .addOption("15", "15")
+                    .addOption("20", "20")
+                    .addOption("30", "30")
+                    .addOption("60", "60")
+                    .setValue(this.plugin.settings.timestampInterval)
+                    .onChange(async (value) => {
+                        this.plugin.settings.timestampInterval = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
             .setName("Swiftink Settings")
             .setClass("swiftink-settings")
             .setHeading();
@@ -488,7 +510,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Word timestamps")
-            .setDesc("Include timestamps for each word, can get very verbose! Only works if timestamps are enabled.")
+            .setDesc("Include timestamps for each word, can get very verbose! Only works if timestamps are enabled. Overrides the timestamp interval.")
             .setClass("whisper-asr-settings")
             .setClass("depends-on-timestamps")
             .addToggle((toggle) =>
