@@ -1,11 +1,12 @@
-import { TranscriptionSettings, /*SWIFTINK_AUTH_CALLBACK*/ API_BASE } from "src/settings";
+import { TranscriptionSettings, /*SWIFTINK_AUTH_CALLBACK*/ API_BASE, DEFAULT_SETTINGS } from "src/settings";
 import { Notice, requestUrl, RequestUrlParam, TFile, Vault, App } from "obsidian";
 import { format } from "date-fns";
 import { paths, components } from "./types/swiftink";
-import { payloadGenerator, PayloadData } from "src/utils";
+import { PayloadData, payloadGenerator, preprocessWhisperASRResponse } from "src/utils";
 import { StatusBar } from "./status";
 import { SupabaseClient } from "@supabase/supabase-js";
 import * as tus from "tus-js-client";
+import { WhisperASRSegment } from "./types/whisper-asr";
 
 type TranscriptionBackend = (file: TFile) => Promise<string>;
 
@@ -90,9 +91,14 @@ export class TranscriptionEngine {
         const [request_body, boundary_string] =
             await payloadGenerator(payload_data);
 
-        let args = "task=transcribe";
-        if (this.settings.language != "auto")
-            args += `&language=${this.settings.language}`;
+        let args = "output=json"; // always output json, so we can have the timestamps if we need them
+        const { translate, encode, vadFilter, timestamps, wordTimestamps, language, initialPrompt } = this.settings;
+        if (translate) args += `&task=translate`;
+        if (encode !== DEFAULT_SETTINGS.encode) args += `&encode=${encode}`;
+        if (vadFilter !== DEFAULT_SETTINGS.vadFilter) args += `&vad_filter=${vadFilter}`;
+        if (timestamps && wordTimestamps !== DEFAULT_SETTINGS.wordTimestamps) args += `&word_timestamps=${wordTimestamps}`;
+        if (language !== DEFAULT_SETTINGS.language) args += `&language=${language}`;
+        if (initialPrompt) args += `&initial_prompt=${initialPrompt}`;
 
         const urls = this.settings.whisperASRUrls
             .split(";")
@@ -113,9 +119,43 @@ export class TranscriptionEngine {
 
             try {
                 const response = await requestUrl(options);
-                if (this.settings.debug) console.log(response);
-                if (typeof response.text === "string") return response.text;
-                else return response.json.text;
+                if (this.settings.debug) console.log("Raw response:", response);
+
+                const preprocessed = preprocessWhisperASRResponse(response.json);
+                if (this.settings.debug) console.log("Preprocessed response:", preprocessed);
+
+                if (
+                    this.settings.wordTimestamps
+                    && preprocessed.segments.some((segment: WhisperASRSegment) => segment.wordTimestamps)
+                ) {
+                    // Create segments for each word timestamp if word timestamps are available and enabled
+                    const wordSegments = preprocessed.segments
+                        .reduce((acc: components["schemas"]["TimestampedTextSegment"][], segment: WhisperASRSegment) => {
+                            if (segment.wordTimestamps) {
+                                acc.push(...segment.wordTimestamps.map(wordTimestamp => ({
+                                    start: wordTimestamp.start,
+                                    end: wordTimestamp.end,
+                                    text: wordTimestamp.word
+                                } as components["schemas"]["TimestampedTextSegment"])));
+                            }
+                            return acc;
+                        }, []);
+                    return this.segmentsToTimestampedString(wordSegments, this.settings.timestampFormat);
+                } else if (this.settings.timestamps) {
+                    // Use existing segment-to-string functionality if only segment timestamps are needed
+                    const segments = preprocessed.segments.map((segment: WhisperASRSegment) => ({
+                        start: segment.start,
+                        end: segment.end,
+                        text: segment.text
+                    }));
+                    return this.segmentsToTimestampedString(segments, this.settings.timestampFormat);
+                } else if (preprocessed.segments) {
+                    // Concatenate all segments into a single string if no timestamps are required
+                    return preprocessed.segments.map((segment: WhisperASRSegment) => segment.text).join("\n");
+                } else {
+                    // Fallback to full text if no segments are there
+                    return preprocessed.text;
+                }
             } catch (error) {
                 if (this.settings.debug) console.error("Error with URL:", url, error);
                 // Don't return or throw yet, try the next URL
