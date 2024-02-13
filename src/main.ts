@@ -211,19 +211,19 @@ export default class Transcription extends Plugin {
                 fileText.indexOf(fileLinkStringTagged) +
                 fileLinkStringTagged.length;
 
-                if (this.settings.lineSpacing === "single") {
-                    fileText = [
-                        fileText.slice(0, startReplacementIndex),
-                        `${transcription}`,
-                        fileText.slice(startReplacementIndex),
-                    ].join(" ");
-                } else {
-                    fileText = [
-                        fileText.slice(0, startReplacementIndex),
-                        `\n${transcription}`,
-                        fileText.slice(startReplacementIndex),
-                    ].join("");
-                }
+            if (this.settings.lineSpacing === "single") {
+                fileText = [
+                    fileText.slice(0, startReplacementIndex),
+                    `${transcription}`,
+                    fileText.slice(startReplacementIndex),
+                ].join(" ");
+            } else {
+                fileText = [
+                    fileText.slice(0, startReplacementIndex),
+                    `\n${transcription}`,
+                    fileText.slice(startReplacementIndex),
+                ].join("");
+            }
 
             //check if abortion signal is aborted
 
@@ -697,7 +697,7 @@ export default class Transcription extends Plugin {
                         // new Notice(`Running ${function_name} on ${id}`);
                         if (function_name == "View on Swiftink.io") {
                             window.open(
-                                "https://swiftink.io/dashboard/",
+                                "https://swiftink.io/dashboard/transcripts/" + id,
                                 "_blank"
                             );
                         }
