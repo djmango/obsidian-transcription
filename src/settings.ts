@@ -178,39 +178,9 @@ class TranscriptionSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         this.plugin.settings.transcriptionEngine = value;
                         await this.plugin.saveSettings();
-                        // Hide the settings for the other transcription engine
-                        if (value == "swiftink") {
-                            containerEl
-                                .findAll(".swiftink-settings")
-                                .forEach((element) => {
-                                    element.style.display = "block";
-                                });
-                            containerEl
-                                .findAll(".whisper-asr-settings")
-                                .forEach((element) => {
-                                    element.style.display = "none";
-                                });
-                        } else if (value == "whisper_asr") {
-                            containerEl
-                                .findAll(".swiftink-settings")
-                                .forEach((element) => {
-                                    element.style.display = "none";
-                                });
-                            containerEl
-                                .findAll(".whisper-asr-settings")
-                                .forEach((element) => {
-                                    element.style.display = "block";
-                                });
-                        }
-                        // Hide the settings that depend on timestamps based on whether timestamps are enabled.
-                        // Just here to keep the UI up to date, TODO move this, and the rest to a separate function
-                        containerEl
-                            .findAll(".depends-on-timestamps")
-                            .forEach((element) => {
-                                element.style.display = this.plugin.settings.timestamps
-                                    ? "block"
-                                    : "none";
-                            });
+                        this.updateSettingVisibility(".swiftink-settings", value === "swiftink");
+                        this.updateSettingVisibility(".whisper-asr-settings", value === "whisper_asr");
+                        this.updateSettingVisibility(".word-timestamps-setting", value === "whisper_asr" && this.plugin.settings.timestamps);
                     }),
             );
 
@@ -277,11 +247,8 @@ class TranscriptionSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         this.plugin.settings.timestamps = value;
                         await this.plugin.saveSettings();
-                        containerEl
-                            .findAll(".depends-on-timestamps")
-                            .forEach((element) => {
-                                element.style.display = value ? "block" : "none";
-                            });
+                        this.updateSettingVisibility(".depends-on-timestamps", value);
+                        this.updateSettingVisibility(".word-timestamps-setting", this.plugin.settings.transcriptionEngine === "whisper_asr" && value);
                     }),
             );
 
@@ -368,16 +335,8 @@ class TranscriptionSettingTab extends PluginSettingTab {
                     this.plugin.settings.swiftink_access_token = null;
                     this.plugin.settings.swiftink_refresh_token = null;
                     await this.plugin.saveSettings();
-                    containerEl
-                        .findAll(".swiftink-unauthed-only")
-                        .forEach((element) => {
-                            element.style.display = "block";
-                        });
-                    containerEl
-                        .findAll(".swiftink-authed-only")
-                        .forEach((element) => {
-                            element.style.display = "none";
-                        });
+                    this.updateSettingVisibility(".swiftink-unauthed-only", true);
+                    this.updateSettingVisibility(".swiftink-authed-only", false);
                     new Notice("Successfully logged out");
                 });
             })
@@ -454,8 +413,7 @@ class TranscriptionSettingTab extends PluginSettingTab {
                 toggle
                     .setValue(this.plugin.settings.embedAdditionalFunctionality)
                     .onChange(async (value) => {
-                        this.plugin.settings.embedAdditionalFunctionality =
-                            value;
+                        this.plugin.settings.embedAdditionalFunctionality = value;
                         await this.plugin.saveSettings();
                     }),
             );
@@ -510,9 +468,8 @@ class TranscriptionSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Word timestamps")
-            .setDesc("Include timestamps for each word, can get very verbose! Only works if timestamps are enabled. Overrides the timestamp interval.")
-            .setClass("whisper-asr-settings")
-            .setClass("depends-on-timestamps")
+            .setDesc("Include timestamps for each word, can get very verbose! Only works if timestamps are enabled.")
+            .setClass("word-timestamps-setting")
             .addToggle((toggle) =>
                 toggle
                     .setValue(this.plugin.settings.wordTimestamps)
@@ -585,55 +542,37 @@ class TranscriptionSettingTab extends PluginSettingTab {
         disclaimer.style.fontSize = "0.85em";
 
         // Logic! (the incredible true story)
+        this.updateSettingVisibility(".swiftink-settings", this.plugin.settings.transcriptionEngine === "swiftink");
+        this.updateSettingVisibility(".whisper-asr-settings", this.plugin.settings.transcriptionEngine === "whisper_asr");
 
-        // Initially hide the settings for the other transcription engine
-        if (this.plugin.settings.transcriptionEngine == "swiftink") {
-            containerEl.findAll(".swiftink-settings").forEach((element) => {
-                element.style.display = "block";
-            });
-            containerEl.findAll(".whisper-asr-settings").forEach((element) => {
-                element.style.display = "none";
-            });
-        } else if (this.plugin.settings.transcriptionEngine == "whisper_asr") {
-            containerEl.findAll(".swiftink-settings").forEach((element) => {
-                element.style.display = "none";
-            });
-            containerEl.findAll(".whisper-asr-settings").forEach((element) => {
-                element.style.display = "block";
-            });
-        }
+        this.updateSettingVisibility(".depends-on-timestamps", this.plugin.settings.timestamps);
+        this.updateSettingVisibility(".word-timestamps-setting", this.plugin.settings.transcriptionEngine === "whisper_asr" && this.plugin.settings.timestamps);
 
-        // Initially hide the settings that depend on timestamps based on whether timestamps are enabled
-        if (!this.plugin.settings.timestamps) {
-            containerEl
-                .findAll(".depends-on-timestamps")
-                .forEach((element) => {
-                    element.style.display = "none";
-                });
-        }
+        this.updateSettingVisibility(".swiftink-unauthed-only", this.plugin.user === null);
+        this.updateSettingVisibility(".swiftink-authed-only", this.plugin.user !== null);
+    }
 
-        // Initially hide the settings for user auth/unauth based on whether the user is signed in
-        if (this.plugin.user == null) {
-            containerEl
-                .findAll(".swiftink-unauthed-only")
-                .forEach((element) => {
-                    element.style.display = "block";
-                });
-            containerEl.findAll(".swiftink-authed-only").forEach((element) => {
-                element.style.display = "none";
+
+    /**
+     * Update the visibility of settings based on the current settings.
+     */
+    updateSettingVisibility (classSelector: string, visible: boolean) {
+        const { containerEl } = this;
+        containerEl
+            .findAll(classSelector)
+            .forEach((element) => {
+                element.style.display = visible ? "block" : "none";
             });
-        } else {
-            containerEl
-                .findAll(".swiftink-unauthed-only")
-                .forEach((element) => {
-                    element.style.display = "none";
-                });
-            containerEl.findAll(".swiftink-authed-only").forEach((element) => {
-                element.style.display = "block";
-            });
-        }
     }
 }
 
 export type { TranscriptionSettings };
-export { DEFAULT_SETTINGS, SWIFTINK_AUTH_CALLBACK, TranscriptionSettingTab, SUPABASE_URL, SUPABASE_KEY, API_BASE, IS_SWIFTINK };
+export {
+    DEFAULT_SETTINGS,
+    SWIFTINK_AUTH_CALLBACK,
+    TranscriptionSettingTab,
+    SUPABASE_URL,
+    SUPABASE_KEY,
+    API_BASE,
+    IS_SWIFTINK
+};
