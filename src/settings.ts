@@ -4,6 +4,7 @@ import { Transcription } from "./main";
 interface TranscriptionSettings {
     timestamps: boolean;
     timestampFormat: string;
+    timestampInterval: string; // easier to store as a string and convert to number when needed
     translate: boolean;
     language: string;
     verbosity: number;
@@ -33,7 +34,8 @@ const IS_SWIFTINK = "swiftink";
 
 const DEFAULT_SETTINGS: TranscriptionSettings = {
     timestamps: false,
-    timestampFormat: "HH:mm:ss",
+    timestampFormat: "auto",
+    timestampInterval: "0",
     translate: false,
     language: "auto",
     verbosity: 1,
@@ -253,17 +255,38 @@ class TranscriptionSettingTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Timestamp format")
             .setDesc(
-                "Your choice of hours, minutes, and/or seconds in the timestamp",
+                "Your choice of hours, minutes, and/or seconds in the timestamp. Auto uses the shortest possible format.",
             )
             .setClass("depends-on-timestamps")
             .addDropdown((dropdown) =>
                 dropdown
+                    .addOption("auto", "Auto")
                     .addOption("HH:mm:ss", "HH:mm:ss")
                     .addOption("mm:ss", "mm:ss")
                     .addOption("ss", "ss")
                     .setValue(this.plugin.settings.timestampFormat)
                     .onChange(async (value) => {
                         this.plugin.settings.timestampFormat = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Timestamp interval")
+            .setDesc("The interval at which to add timestamps, in seconds.")
+            .setClass("depends-on-timestamps")
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("0", "Off")
+                    .addOption("5", "5")
+                    .addOption("10", "10")
+                    .addOption("15", "15")
+                    .addOption("20", "20")
+                    .addOption("30", "30")
+                    .addOption("60", "60")
+                    .setValue(this.plugin.settings.timestampInterval)
+                    .onChange(async (value) => {
+                        this.plugin.settings.timestampInterval = value;
                         await this.plugin.saveSettings();
                     }),
             );
