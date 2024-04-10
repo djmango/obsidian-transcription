@@ -128,7 +128,6 @@ export class TranscriptionEngine {
             await payloadGenerator(payload_data);
 
         let args = "output=json"; // always output json, so we can have the timestamps if we need them
-        args += `&word_timestamps=true`; // always output word timestamps, so we can have the timestamps if we need them
         const { translate, encode, vadFilter, language, initialPrompt } = this.settings;
         if (translate) args += `&task=translate`;
         if (encode !== DEFAULT_SETTINGS.encode) args += `&encode=${encode}`;
