@@ -87,7 +87,12 @@ export type WhisperASRSegment = {
     /**
      * An array of word-level timestamps, providing detailed timing for each word spoken in the segment.
      */
-    wordTimestamps: WhisperASRWordTimestamp[] | null;
+    words: WhisperASRWordTimestamp[] | null;
+
+    /**
+     * The unique identifier for the segment.
+     */
+    id: number;
 };
 
 /**
@@ -116,7 +121,7 @@ export type WhisperASRWordTimestamp = {
      * The model's confidence in the accuracy of this word transcription.
      * @example 0.941351592540741
      */
-    confidence: number;
+    probability: number;
 };
 
 

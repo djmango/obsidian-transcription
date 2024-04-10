@@ -6,7 +6,7 @@ import { PayloadData, payloadGenerator, preprocessWhisperASRResponse } from "src
 import { StatusBar } from "./status";
 import { SupabaseClient } from "@supabase/supabase-js";
 import * as tus from "tus-js-client";
-import { WhisperASRSegment } from "./types/whisper-asr";
+import { WhisperASRResponse, WhisperASRSegment } from "./types/whisper-asr";
 
 type TranscriptionBackend = (file: TFile) => Promise<string>;
 
@@ -157,14 +157,17 @@ export class TranscriptionEngine {
                 const response = await requestUrl(options);
                 if (this.settings.debug) console.log("Raw response:", response);
 
-                const preprocessed = preprocessWhisperASRResponse(response.json);
+                // ASR_ENGINE=faster_whisper returns segments as an array. Preprocess it to match the standard.
+                const preprocessed = Array.isArray(response.json.segments[0])
+                    ? preprocessWhisperASRResponse(response.json) : response.json as WhisperASRResponse;
+
                 if (this.settings.debug) console.log("Preprocessed response:", preprocessed);
 
                 // Create segments for each word timestamp if word timestamps are available
                 const wordSegments = preprocessed.segments
                     .reduce((acc: components["schemas"]["TimestampedTextSegment"][], segment: WhisperASRSegment) => {
-                        if (segment.wordTimestamps) {
-                            acc.push(...segment.wordTimestamps.map(wordTimestamp => ({
+                        if (segment.words) {
+                            acc.push(...segment.words.map(wordTimestamp => ({
                                 start: wordTimestamp.start,
                                 end: wordTimestamp.end,
                                 text: wordTimestamp.word

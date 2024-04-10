@@ -1,6 +1,6 @@
 /* Utility functions for Obsidian Transcript */
 import { App, FileSystemAdapter, getBlobArrayBuffer } from "obsidian";
-import { WhisperASRResponse, WhisperASRSegment } from "./types/whisper-asr";
+import { WhisperASRResponse, WhisperASRSegment, WhisperASRWordTimestamp } from "./types/whisper-asr";
 
 export const randomString = (length: number) => Array(length + 1).join((Math.random().toString(36) + '00000000000000000').slice(2, 18)).slice(0, length)
 export const getAllLinesFromFile = (cache: string) => cache.split(/\r?\n/)
@@ -74,15 +74,15 @@ export function preprocessWhisperASRResponse(rawResponse: any): WhisperASRRespon
                 avg_logprob: segment[7],
                 compression_ratio: segment[8],
                 no_speech_prob: segment[9],
-                wordTimestamps: null,
+                words: null,
             } as WhisperASRSegment;
             if (segment[10] !== null) { // easier to read than a ternary-destructured assignment
-                baseSegment.wordTimestamps = segment[10].map((wordTimestamp: any) => ({
+                baseSegment.words = segment[10].map((wordTimestamp: unknown[]) => ({
                     start: wordTimestamp[0],
                     end: wordTimestamp[1],
                     word: wordTimestamp[2],
-                    confidence: wordTimestamp[3],
-                }));
+                    probability: wordTimestamp[3],
+                } as WhisperASRWordTimestamp));
             }
             return baseSegment;
         })
