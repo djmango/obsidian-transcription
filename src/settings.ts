@@ -115,7 +115,7 @@ const LANGUAGES = {
     MARATHI: "mr",
     MONGOLIAN: "mn",
     NEPALI: "ne",
-    NORWEGIAN: "nb",
+    NORWEGIAN: "no",
     OCCITAN: "oc",
     PANJABI: "pa",
     PERSIAN: "fa",
