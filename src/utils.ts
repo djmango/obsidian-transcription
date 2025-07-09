@@ -27,8 +27,8 @@ export async function payloadGenerator(payload_data: PayloadData): Promise<Paylo
 
     const boundary_string = `Boundary${randomString(16)}`;
     const boundary = `------${boundary_string}`;
-    const chunks: Uint8Array | ArrayBuffer[] = [];
-    // NOTE Could this cause corrupt files via synchronous operations? So far no issues, but it's worth keeping an eye on
+    const chunks: (Uint8Array | ArrayBuffer)[] = [];
+    // Process each part of the payload data
     for (const [key, value] of Object.entries(payload_data)) {
         // Start of a new part
         chunks.push(new TextEncoder().encode(`${boundary}\r\n`));
@@ -43,13 +43,17 @@ export async function payloadGenerator(payload_data: PayloadData): Promise<Paylo
             chunks.push(await getBlobArrayBuffer(value));
             chunks.push(new TextEncoder().encode('\r\n'));
         }
-        else {
-            chunks.push(new Uint8Array(await new Response(value).arrayBuffer()));
+        else if (value instanceof ArrayBuffer) {
+            chunks.push(new TextEncoder().encode(`Content-Disposition: form-data; name="${key}"; filename="blob"\r\nContent-Type: "application/octet-stream"\r\n\r\n`));
+            chunks.push(value);
             chunks.push(new TextEncoder().encode('\r\n'));
         }
-
+        else {
+            // Convert other types to Uint8Array properly
+            chunks.push(new TextEncoder().encode(`Content-Disposition: form-data; name="${key}"\r\n\r\n`));
+            chunks.push(new TextEncoder().encode(String(value) + '\r\n'));
+        }
     }
-    await Promise.all(chunks);
     chunks.push(new TextEncoder().encode(`${boundary}--\r\n`));
     return [await new Blob(chunks).arrayBuffer(), boundary_string];
 }
