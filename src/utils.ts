@@ -62,11 +62,11 @@ export async function payloadGenerator(payload_data: PayloadData): Promise<Paylo
  * Preprocesses the raw response from Whisper ASR into a more structured and typed format.
  * @param rawResponse - The raw response object from Whisper ASR.
  */
-export function preprocessWhisperASRResponse(rawResponse: any): WhisperASRResponse {
+export function preprocessWhisperASRResponse(rawResponse: { language: string; text: string; segments: unknown[] }): WhisperASRResponse {
     return {
         language: rawResponse.language,
         text: rawResponse.text,
-        segments: rawResponse.segments.map((segment: any) => {
+        segments: rawResponse.segments.map((segment: unknown[]) => {
             const baseSegment = {
                 segmentIndex: segment[0],
                 seek: segment[1],
@@ -81,7 +81,7 @@ export function preprocessWhisperASRResponse(rawResponse: any): WhisperASRRespon
                 words: null,
             } as WhisperASRSegment;
             if (segment[10] !== null) { // easier to read than a ternary-destructured assignment
-                baseSegment.words = segment[10].map((wordTimestamp: unknown[]) => ({
+                baseSegment.words = (segment[10] as unknown[]).map((wordTimestamp: unknown[]) => ({
                     start: wordTimestamp[0],
                     end: wordTimestamp[1],
                     word: wordTimestamp[2],

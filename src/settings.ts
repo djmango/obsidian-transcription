@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Notice } from "obsidian";
+import { App, PluginSettingTab, Setting } from "obsidian";
 import { Transcription } from "./main";
 
 interface TranscriptionSettings {
@@ -11,12 +11,6 @@ interface TranscriptionSettings {
     whisperASRUrls: string;
     debug: boolean;
     transcriptionEngine: string;
-    embedAdditionalFunctionality: boolean;
-    embedSummary: boolean;
-    embedOutline: boolean;
-    embedKeywords: boolean;
-    swiftink_access_token: string | null;
-    swiftink_refresh_token: string | null;
     lineSpacing: string;
     encode: boolean;
     initialPrompt: string;
@@ -24,13 +18,6 @@ interface TranscriptionSettings {
     wordTimestamps: boolean;
 }
 
-const SWIFTINK_AUTH_CALLBACK =
-    "https://swiftink.io/login/?callback=obsidian://swiftink_auth";
-
-const SUPABASE_URL = "https://vcdeqgrsqaexpnogauly.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjZGVxZ3JzcWFleHBub2dhdWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODU2OTM4NDUsImV4cCI6MjAwMTI2OTg0NX0.BBxpvuejw_E-Q_g6SU6G6sGP_6r4KnrP-vHV2JZpAho";
-const API_BASE = "https://api.swiftink.io";
-const IS_SWIFTINK = "swiftink";
 
 const DEFAULT_SETTINGS: TranscriptionSettings = {
     timestamps: false,
@@ -41,13 +28,7 @@ const DEFAULT_SETTINGS: TranscriptionSettings = {
     verbosity: 1,
     whisperASRUrls: "http://localhost:9000",
     debug: false,
-    transcriptionEngine: "swiftink",
-    embedAdditionalFunctionality: true,
-    embedSummary: true,
-    embedOutline: true,
-    embedKeywords: true,
-    swiftink_access_token: null,
-    swiftink_refresh_token: null,
+    transcriptionEngine: "whisper_asr",
     lineSpacing: "multi",
     encode: true,
     initialPrompt: "",
@@ -167,18 +148,16 @@ class TranscriptionSettingTab extends PluginSettingTab {
             .setName("Transcription engine")
             .setDesc("The transcription engine to use")
             .setTooltip(
-                "Swiftink is a free cloud based transcription engine (no local set up, additional AI features). Whisper ASR is a self-hosted local transcription engine that uses a Python app (requires local setup).",
+                "Whisper ASR is a self-hosted local transcription engine that uses a Python app (requires local setup).",
             )
             .setClass("transcription-engine-setting")
             .addDropdown((dropdown) =>
                 dropdown
-                    .addOption("swiftink", "Swiftink")
                     .addOption("whisper_asr", "Whisper ASR")
                     .setValue(this.plugin.settings.transcriptionEngine)
                     .onChange(async (value) => {
                         this.plugin.settings.transcriptionEngine = value;
                         await this.plugin.saveSettings();
-                        this.updateSettingVisibility(".swiftink-settings", value === "swiftink");
                         this.updateSettingVisibility(".whisper-asr-settings", value === "whisper_asr");
                         this.updateSettingVisibility(".word-timestamps-setting", value === "whisper_asr" && this.plugin.settings.timestamps);
                     }),
@@ -291,132 +270,6 @@ class TranscriptionSettingTab extends PluginSettingTab {
                     }),
             );
 
-        new Setting(containerEl)
-            .setName("Swiftink Settings")
-            .setClass("swiftink-settings")
-            .setHeading();
-
-        new Setting(containerEl)
-            .setClass("swiftink-settings")
-            .setName("Swiftink Account")
-            .addButton((bt) => {
-                bt.setButtonText("Sign in with Email");
-                bt.setClass("swiftink-unauthed-only");
-                bt.onClick(async () => {
-                    window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
-                });
-            })
-            .addButton((bt) => {
-                bt.setButtonText("Sign in with Google");
-                bt.setClass("swiftink-unauthed-only");
-                bt.onClick(async () => {
-                    this.plugin.supabase.auth.signInWithOAuth({
-                        provider: "google",
-                        options: { redirectTo: "obsidian://swiftink_auth" },
-                    });
-                });
-            })
-            .addButton((bt) => {
-                bt.setButtonText("Sign in with GitHub");
-                bt.setClass("swiftink-unauthed-only");
-                bt.onClick(async () => {
-                    this.plugin.supabase.auth.signInWithOAuth({
-                        provider: "github",
-                        options: { redirectTo: "obsidian://swiftink_auth" },
-                    });
-                });
-            })
-            .addButton((bt) => {
-                bt.setButtonText("Log out");
-                bt.setClass("swiftink-authed-only");
-                bt.onClick(async () => {
-                    await this.plugin.supabase.auth.signOut();
-                    this.plugin.user = null;
-                    this.plugin.settings.swiftink_access_token = null;
-                    this.plugin.settings.swiftink_refresh_token = null;
-                    await this.plugin.saveSettings();
-                    this.updateSettingVisibility(".swiftink-unauthed-only", true);
-                    this.updateSettingVisibility(".swiftink-authed-only", false);
-                    new Notice("Successfully logged out");
-                });
-            })
-            .addButton((bt) => {
-                bt.setButtonText(`Manage ${this.plugin.user?.email}`);
-                bt.setClass("swiftink-authed-only");
-                bt.setClass("swiftink-manage-account-btn");
-                bt.onClick(() => {
-                    window.open(
-                        "https://swiftink.io/dashboard/account",
-                        "_blank",
-                    );
-                });
-            });
-
-        new Setting(containerEl)
-            .setName("Embed summary")
-            .setDesc("Embed the generated transcription summary in the note")
-            .setTooltip(
-                "This will only work if you have a Swiftink Pro account",
-            )
-            .setClass("swiftink-settings")
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.embedSummary)
-                    .onChange(async (value) => {
-                        this.plugin.settings.embedSummary = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Embed outline")
-            .setDesc("Embed the generated transcription outline in the note")
-            .setTooltip(
-                "This will only work if you have a Swiftink Pro account",
-            )
-            .setClass("swiftink-settings")
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.embedOutline)
-                    .onChange(async (value) => {
-                        this.plugin.settings.embedOutline = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Embed keywords")
-            .setDesc("Embed the extracted keywords in the note")
-            .setTooltip(
-                "This will only work if you have a Swiftink Pro account",
-            )
-            .setClass("swiftink-settings")
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.embedKeywords)
-                    .onChange(async (value) => {
-                        this.plugin.settings.embedKeywords = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Embed function link")
-            .setDesc(
-                "(Recommended) Include an embedded link to the transcript function modal in the transcribed note",
-            )
-            .setTooltip(
-                "If you disable this, you will not be able to import your additional transcript data or view the transcript on the Swiftink.io from within Obsidian.",
-            )
-            .setClass("swiftink-settings")
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.embedAdditionalFunctionality)
-                    .onChange(async (value) => {
-                        this.plugin.settings.embedAdditionalFunctionality = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
 
         new Setting(containerEl)
             .setName("Whisper ASR Settings")
@@ -506,50 +359,12 @@ class TranscriptionSettingTab extends PluginSettingTab {
                     }),
             );
 
-        // Swiftnk.io links
-        containerEl.createEl("hr");
-
-        const logoLink = containerEl.createEl("a");
-        logoLink.href = "https://www.swiftink.io";
-        logoLink.style.display = "block";
-        logoLink.style.marginLeft = "auto";
-        logoLink.style.marginRight = "auto";
-        logoLink.style.width = "30%";
-
-        const logo = logoLink.createEl("img");
-        logo.src = "https://www.swiftink.io/assets/img/logos/swiftink.svg";
-        logo.alt = "Swiftink Logo";
-        logo.style.display = "block";
-        logo.style.width = "100%";
-
-        const name = containerEl.createEl("p");
-        name.classList.add("swiftink-settings");
-        name.innerHTML = "Swiftink.io";
-        name.style.textAlign = "center";
-
-        const help = containerEl.createEl("p");
-        help.classList.add("swiftink-settings");
-        help.innerHTML =
-            "Questions? Please see our <a href='https://www.swiftink.io/docs'>Documentation</a> or email us at <a href='mailto:support@swiftnk.io'>support@swiftink.io</a> 🙂";
-        help.style.textAlign = "center";
-        help.style.fontSize = "0.85em";
-
-        const disclaimer = containerEl.createEl("p");
-        disclaimer.classList.add("swiftink-settings");
-        disclaimer.innerHTML =
-            "By proceeding you agree to our <a href='https://www.swiftink.io/terms'>Terms of Service</a> and <a href='https://www.swiftink.io/privacy'>Privacy Policy</a>.";
-        disclaimer.style.textAlign = "center";
-        disclaimer.style.fontSize = "0.85em";
 
         // Logic! (the incredible true story)
-        this.updateSettingVisibility(".swiftink-settings", this.plugin.settings.transcriptionEngine === "swiftink");
         this.updateSettingVisibility(".whisper-asr-settings", this.plugin.settings.transcriptionEngine === "whisper_asr");
 
         this.updateSettingVisibility(".depends-on-timestamps", this.plugin.settings.timestamps);
         this.updateSettingVisibility(".word-timestamps-setting", this.plugin.settings.transcriptionEngine === "whisper_asr" && this.plugin.settings.timestamps);
-
-        this.updateSettingVisibility(".swiftink-unauthed-only", this.plugin.user === null);
-        this.updateSettingVisibility(".swiftink-authed-only", this.plugin.user !== null);
     }
 
 
@@ -569,10 +384,5 @@ class TranscriptionSettingTab extends PluginSettingTab {
 export type { TranscriptionSettings };
 export {
     DEFAULT_SETTINGS,
-    SWIFTINK_AUTH_CALLBACK,
-    TranscriptionSettingTab,
-    SUPABASE_URL,
-    SUPABASE_KEY,
-    API_BASE,
-    IS_SWIFTINK
+    TranscriptionSettingTab
 };
