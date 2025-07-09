@@ -207,9 +207,42 @@ export default class Transcription extends Plugin {
             );
             const fileLinkStringTagged = `[[${fileLinkString}]]`;
 
-            const startReplacementIndex =
-                fileText.indexOf(fileLinkStringTagged) +
-                fileLinkStringTagged.length;
+            // Find the file link in the text - try multiple approaches for robustness
+            let startReplacementIndex = fileText.indexOf(fileLinkStringTagged);
+            
+            if (startReplacementIndex === -1) {
+                // If fileToLinktext didn't work, try the file path
+                const filePathTagged = `[[${file.path}]]`;
+                startReplacementIndex = fileText.indexOf(filePathTagged);
+                
+                if (startReplacementIndex === -1) {
+                    // If that didn't work, try just the filename
+                    const fileNameTagged = `[[${file.name}]]`;
+                    startReplacementIndex = fileText.indexOf(fileNameTagged);
+                    
+                    if (startReplacementIndex === -1) {
+                        // As a last resort, use regex to find a link ending with the filename
+                        const escapedFileName = file.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const regex = new RegExp(`\\[\\[([^\\]]*${escapedFileName})\\]\\]`);
+                        const match = fileText.match(regex);
+                        if (match) {
+                            startReplacementIndex = match.index;
+                        }
+                    }
+                }
+            }
+
+            if (startReplacementIndex === -1) {
+                throw new Error(`Could not find link for file ${file.path} in parent file ${parent_file.path}`);
+            }
+
+            // Find the end of the link
+            const linkEnd = fileText.indexOf(']]', startReplacementIndex);
+            if (linkEnd === -1) {
+                throw new Error(`Could not find end of link for file ${file.path} in parent file ${parent_file.path}`);
+            }
+
+            startReplacementIndex = linkEnd + 2; // Position after the ]]
 
             if (this.settings.lineSpacing === "single") {
                 fileText = [
