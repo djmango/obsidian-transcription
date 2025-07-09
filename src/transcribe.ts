@@ -1,11 +1,11 @@
 import { TranscriptionSettings, DEFAULT_SETTINGS } from "src/settings";
-import { Notice, requestUrl, RequestUrlParam, TFile, Vault, App } from "obsidian";
+import { requestUrl, RequestUrlParam, TFile, Vault, App } from "obsidian";
 import { format } from "date-fns";
 import { PayloadData, payloadGenerator, preprocessWhisperASRResponse } from "src/utils";
 import { StatusBar } from "./status";
 import { WhisperASRResponse, WhisperASRSegment } from "./types/whisper-asr";
 
-type TranscriptionBackend = (file: TFile) => Promise<string>;
+type TranscriptionBackend = (_file: TFile) => Promise<string>;
 
 
 export class TranscriptionEngine {
