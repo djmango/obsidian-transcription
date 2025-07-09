@@ -81,7 +81,7 @@ export function preprocessWhisperASRResponse(rawResponse: { language: string; te
                 words: null,
             } as WhisperASRSegment;
             if (segment[10] !== null) { // easier to read than a ternary-destructured assignment
-                baseSegment.words = segment[10].map((wordTimestamp: unknown[]) => ({
+                baseSegment.words = (segment[10] as unknown[]).map((wordTimestamp: unknown[]) => ({
                     start: wordTimestamp[0],
                     end: wordTimestamp[1],
                     word: wordTimestamp[2],
