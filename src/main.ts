@@ -19,10 +19,8 @@ import {
     TranscriptionSettings,
     DEFAULT_SETTINGS,
     TranscriptionSettingTab,
-    SWIFTINK_AUTH_CALLBACK,
     SUPABASE_URL,
-    SUPABASE_KEY,
-    IS_SWIFTINK
+    SUPABASE_KEY
 } from "./settings";
 import { FileLink } from "./fileLink";
 
@@ -78,20 +76,6 @@ export default class Transcription extends Plugin {
     });
 
 
-    private querySelectionOnAuthentication(
-        authString: string,
-        display: string
-    ) {
-        if (authString === ".swiftink-manage-account-btn") {
-            return document.querySelectorAll(authString).forEach((element) => {
-                element.innerHTML = `Manage ${this.user?.email}`;
-            });
-        } else {
-            return document.querySelectorAll(authString).forEach((element) => {
-                element.setAttribute("style", display);
-            });
-        }
-    }
 
 
     // Modify your executePendingCommand method to store the ongoing task
@@ -239,7 +223,7 @@ export default class Transcription extends Plugin {
             if (error?.message?.includes("402")) {
 
                 new Notice(
-                    "You have exceeded the free tier.\nPlease upgrade to a paid plan at swiftink.io/pricing to continue transcribing files.\nThanks for using Swiftink!"
+                    "You have exceeded the free tier limits."
                     , 10 * 1000
                 );
             } else {
@@ -273,14 +257,6 @@ export default class Transcription extends Plugin {
                         .onClick(async () => {
 
 
-                            if (this.user == null && this.settings.transcriptionEngine == IS_SWIFTINK) {
-                                this.pendingCommand = {
-                                    file: file,
-                                    parentFile: parentFile,
-                                };
-                                // Redirect to sign-in
-                                window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
-                            }
                             // Handle the click event
                             const abortController = new AbortController();
                             const task = this.transcribeAndWrite(
@@ -311,65 +287,9 @@ export default class Transcription extends Plugin {
             this.settings,
             this.app.vault,
             this.statusBar,
-            this.supabase,
-            this.app,
-
+            this.app
         );
 
-        // Prompt the user to sign in if the have Swiftink selected and are not signed in
-        if (this.settings.transcriptionEngine == "swiftink") {
-            this.user = await this.supabase.auth.getUser().then((res) => {
-                return res.data.user || null;
-            });
-            if (this.user == null) {
-                // First try setting the access token and refresh token from the settings
-                if (this.settings.debug)
-                    console.log(
-                        "Trying to set access token and refresh token from settings"
-                    );
-                if (
-                    this.settings.swiftink_access_token != null &&
-                    this.settings.swiftink_refresh_token != null
-                ) {
-                    await this.supabase.auth.setSession({
-                        access_token: this.settings.swiftink_access_token,
-                        refresh_token: this.settings.swiftink_refresh_token,
-                    });
-                    this.user = await this.supabase.auth
-                        .getUser()
-                        .then((res) => {
-                            return res.data.user || null;
-                        });
-                }
-
-                // If the user is still null, prompt them to sign in
-
-                if (this.user == null) {
-                    const noticeContent = document.createDocumentFragment();
-
-                    // Create the text node
-                    const textNode = document.createTextNode(
-                        "Transcription: You are signed out. Please "
-                    );
-
-                    // Create the hyperlink
-                    const signInLink = document.createElement("a");
-                    //signInLink.href = SWIFTINK_AUTH_CALLBACK;
-                    signInLink.target = "_blank";
-                    signInLink.textContent = "Sign In";
-
-                    // Append the text and link to the document fragment
-                    noticeContent.appendChild(textNode);
-                    noticeContent.appendChild(signInLink);
-
-                    // Create the notice with the content
-                    const notice = new Notice(noticeContent, 16 * 1000);
-                    notice.noticeEl.addEventListener("click", () => {
-                        window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
-                    });
-                }
-            }
-        }
 
         if (!Platform.isMobileApp) {
             this.statusBar = new StatusBar(this.addStatusBarItem());
@@ -487,14 +407,7 @@ export default class Transcription extends Plugin {
                 new Notice(`Files Selected: ${fileNames}`, 5 * 1000);
 
 
-                if (this.user == null && this.settings.transcriptionEngine == IS_SWIFTINK) {
-
-                    this.pendingCommand = {
-                        parentFile: view.file,
-                    };
-
-                    window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
-                } else {
+                {
 
                     for (const fileToTranscribe of filesToTranscribe) {
                         const abortController = new AbortController();
@@ -545,15 +458,7 @@ export default class Transcription extends Plugin {
                         new Notice(`File Selected: ${file.name}`, 5 * 1000);
 
 
-                        if (this.transcriptionInstance.user == null && this.transcriptionInstance.settings.transcriptionEngine == IS_SWIFTINK) {
-                            this.transcriptionInstance.pendingCommand = {
-                                file: file,
-                                parentFile: view.file,
-                            };
-
-                            // Redirect to sign-in
-                            window.open(SWIFTINK_AUTH_CALLBACK, "_blank");
-                        } else {
+                        {
                             const abortController = new AbortController();
                             const task = this.transcriptionInstance.transcribeAndWrite(
                                 view.file,
@@ -604,109 +509,7 @@ export default class Transcription extends Plugin {
         // This adds a settings tab so the user can configure various aspects of the plugin
         this.addSettingTab(new TranscriptionSettingTab(this.app, this));
 
-        this.registerObsidianProtocolHandler(
-            "swiftink_auth",
-            async (callback) => {
-                const params = new URLSearchParams(callback.hash);
-                const access_token = params.get("access_token");
-                const refresh_token = params.get("refresh_token");
 
-                if (!access_token || !refresh_token) {
-                    new Notice(
-                        "Transcription: Error authenticating with Swiftink.io"
-                    );
-                    return;
-                }
-
-                await this.supabase.auth.setSession({
-                    access_token: access_token,
-                    refresh_token: refresh_token,
-                });
-                this.user = await this.supabase.auth.getUser().then((res) => {
-                    return res.data.user || null;
-                });
-                new Notice("Successfully authenticated with Swiftink.io");
-
-                // Save to settings
-                this.settings.swiftink_access_token = access_token;
-                this.settings.swiftink_refresh_token = refresh_token;
-                await this.saveSettings();
-
-                // Show the settings for user auth/unauth based on whether the user is signed in
-                if (this.user == null) {
-                    this.querySelectionOnAuthentication(
-                        ".swiftink-unauthed-only",
-                        "display: block !important"
-                    );
-                    this.querySelectionOnAuthentication(
-                        ".swiftink-authed-only",
-                        "display: none !important"
-                    );
-                } else {
-                    this.querySelectionOnAuthentication(
-                        ".swiftink-unauthed-only",
-                        "display: none !important"
-                    );
-                    this.querySelectionOnAuthentication(
-                        ".swiftink-authed-only",
-                        "display: block !important"
-                    );
-                    this.querySelectionOnAuthentication(
-                        ".swiftink-manage-account-btn",
-                        ""
-                    );
-                }
-
-                // Execute the pending command if there is one
-                if (this.pendingCommand) {
-                    await this.executePendingCommand(this.pendingCommand);
-                    this.pendingCommand = null; // Reset pending command after execution
-                }
-
-                return;
-            }
-        );
-
-        this.registerObsidianProtocolHandler(
-            "swiftink_transcript_functions",
-            async (callback) => {
-                const id = callback.id;
-                console.log(id);
-
-                const functions = [
-                    "View on Swiftink.io",
-                    // "Delete from Swiftink.io",
-                    // "Download .txt",
-                    // "Download .srt",
-                    // "Copy text to clipboard",
-                    // "Copy summary to clipboard",
-                    // "Copy outline to clipboard",
-                    // "Copy keywords to clipboard",
-                ];
-
-                class SwiftinkTranscriptFunctionsModal extends FuzzySuggestModal<string> {
-                    getItems(): string[] {
-                        return functions;
-                    }
-
-                    getItemText(function_name: string): string {
-                        return function_name;
-                    }
-
-                    onChooseItem(function_name: string) {
-                        // new Notice(`Running ${function_name} on ${id}`);
-                        if (function_name == "View on Swiftink.io") {
-                            window.open(
-                                "https://swiftink.io/dashboard/transcripts/" + id,
-                                "_blank"
-                            );
-                        }
-                    }
-                }
-
-                new SwiftinkTranscriptFunctionsModal(this.app).open();
-            }
-        );
     }
 
     onunload() {
