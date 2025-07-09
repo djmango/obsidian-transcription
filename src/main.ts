@@ -226,7 +226,7 @@ export default class Transcription extends Plugin {
                         const regex = new RegExp(`\\[\\[([^\\]]*${escapedFileName})\\]\\]`);
                         const match = fileText.match(regex);
                         if (match) {
-                            startReplacementIndex = match.index;
+                            startReplacementIndex = match.index!;
                         }
                     }
                 }
