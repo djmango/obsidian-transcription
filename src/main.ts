@@ -724,6 +724,10 @@ export default class Transcription extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
+        // Update the transcription engine settings reference after saving
+        if (this.transcriptionEngine) {
+            this.transcriptionEngine.settings = this.settings;
+        }
     }
 }
 
