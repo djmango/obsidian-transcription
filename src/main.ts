@@ -20,6 +20,11 @@ import {
     TranscriptionSettingTab
 } from "./settings";
 import { FileLink } from "./fileLink";
+import { 
+    TranscribableFileSource, 
+    ExternalFileSource, 
+    UrlFileSource
+} from "./types/external-file";
 
 
 export default class Transcription extends Plugin {
@@ -210,6 +215,37 @@ export default class Transcription extends Plugin {
             }
         } finally {
             // Clear the AbortController after completion or cancellation
+            abortController = null;
+        }
+    }
+
+    public async transcribeExternalFile(
+        fileSource: TranscribableFileSource,
+        abortController: AbortController | null
+    ): Promise<string> {
+        try {
+            if (this.settings.debug) console.log("Transcribing external file: " + fileSource.displayName);
+
+            const transcription = await this.transcriptionEngine.getTranscription(fileSource);
+
+            if (abortController?.signal?.aborted) {
+                new Notice(`Transcription of ${fileSource.displayName} cancelled!`, 5 * 1000);
+                return "";
+            }
+
+            return transcription;
+        } catch (error) {
+            if (error?.message?.includes("402")) {
+                new Notice(
+                    "You have exceeded the free tier limits.",
+                    10 * 1000
+                );
+            } else {
+                if (this.settings.debug) console.log(error);
+                new Notice(`Error transcribing external file: ${error}`, 10 * 1000);
+            }
+            throw error;
+        } finally {
             abortController = null;
         }
     }
@@ -453,6 +489,117 @@ export default class Transcription extends Plugin {
                 }
 
                 new FileSelectionModal(this.app, this).open();
+            },
+        });
+
+        this.addCommand({
+            id: "obsidian-transcription-transcribe-external-file",
+            name: "Transcribe External File or URL",
+            editorCallback: async (editor: Editor, view: MarkdownView) => {
+                class ExternalFileModal extends Modal {
+                    private transcriptionInstance: Transcription;
+
+                    constructor(app: App, transcriptionInstance: Transcription) {
+                        super(app);
+                        this.transcriptionInstance = transcriptionInstance;
+                    }
+
+                    onOpen() {
+                        const { contentEl } = this;
+                        contentEl.empty();
+                        
+                        contentEl.createEl("h2", { text: "Transcribe External File or URL" });
+                        
+                        // File picker section
+                        const filePickerContainer = contentEl.createDiv();
+                        filePickerContainer.createEl("label", { text: "Select Local File:" });
+                        const fileInput = filePickerContainer.createEl("input", {
+                            type: "file",
+                            attr: { accept: Transcription.transcribeFileExtensions.map(ext => `.${ext}`).join(',') }
+                        });
+                        fileInput.style.width = "100%";
+                        fileInput.style.marginTop = "5px";
+                        
+                        // URL section
+                        const urlContainer = contentEl.createDiv();
+                        urlContainer.style.marginTop = "15px";
+                        urlContainer.createEl("label", { text: "Or enter URL:" });
+                        const urlInput = urlContainer.createEl("input", {
+                            type: "text",
+                            placeholder: "https://example.com/audio.mp3"
+                        });
+                        urlInput.style.width = "100%";
+                        urlInput.style.marginTop = "5px";
+                        
+                        const buttonContainer = contentEl.createDiv();
+                        buttonContainer.style.marginTop = "20px";
+                        buttonContainer.style.textAlign = "center";
+                        
+                        const transcribeButton = buttonContainer.createEl("button", {
+                            text: "Transcribe",
+                            cls: "mod-cta"
+                        });
+                        
+                        transcribeButton.addEventListener("click", async () => {
+                            const selectedFile = fileInput.files?.[0];
+                            const url = urlInput.value.trim();
+                            
+                            if (!selectedFile && !url) {
+                                new Notice("Please select a file or enter a URL", 5 * 1000);
+                                return;
+                            }
+                            
+                            if (selectedFile && url) {
+                                new Notice("Please select either a file or enter a URL, not both", 5 * 1000);
+                                return;
+                            }
+                            
+                            let fileSource: TranscribableFileSource;
+                            try {
+                                if (selectedFile) {
+                                    fileSource = new ExternalFileSource(selectedFile);
+                                } else {
+                                    fileSource = new UrlFileSource(url);
+                                }
+                                
+                                // Check if file extension is supported
+                                if (!Transcription.transcribeFileExtensions.includes(fileSource.extension.toLowerCase())) {
+                                    new Notice(`Unsupported file type: ${fileSource.extension}`, 5 * 1000);
+                                    return;
+                                }
+                                
+                                this.close();
+                                
+                                const abortController = new AbortController();
+                                const task = this.transcriptionInstance.transcribeExternalFile(fileSource, abortController);
+                                this.transcriptionInstance.ongoingTranscriptionTasks.push({
+                                    task: task.then(() => {}), // Convert to Promise<void>
+                                    abortController,
+                                });
+                                
+                                new Notice(`Starting transcription of ${fileSource.displayName}...`, 3 * 1000);
+                                
+                                try {
+                                    const transcription = await task;
+                                    
+                                    // Insert transcription at cursor position
+                                    if (view.file) {
+                                        const cursor = editor.getCursor();
+                                        const transcriptionText = `## Transcription of ${fileSource.displayName}\n\n${transcription}\n\n`;
+                                        editor.replaceRange(transcriptionText, cursor);
+                                        new Notice(`Transcription completed for ${fileSource.displayName}`, 5 * 1000);
+                                    }
+                                } catch (error) {
+                                    new Notice(`Transcription failed: ${error.message}`, 8 * 1000);
+                                }
+                            } catch (error) {
+                                new Notice(`Error: ${error.message}`, 8 * 1000);
+                            }
+                        });
+                    }
+                }
+
+                new ExternalFileModal(this.app, this).open();
             },
         });
 
