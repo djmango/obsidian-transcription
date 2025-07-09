@@ -1,4 +1,4 @@
-import { TFile, Platform } from "obsidian";
+import { TFile, Vault } from "obsidian";
 
 /**
  * Type for different file source types
@@ -25,9 +25,9 @@ export class VaultFileSource implements TranscribableFileSource {
     extension: string;
     displayName: string;
     private file: TFile;
-    private vault: any;
+    private vault: Vault;
 
-    constructor(file: TFile, vault: any) {
+    constructor(file: TFile, vault: Vault) {
         this.file = file;
         this.vault = vault;
         this.name = file.name;

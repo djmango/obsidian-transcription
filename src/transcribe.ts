@@ -6,7 +6,7 @@ import { StatusBar } from "./status";
 import { WhisperASRResponse, WhisperASRSegment } from "./types/whisper-asr";
 import { TranscribableFileSource } from "./types/external-file";
 
-type TranscriptionBackend = (_file: TFile | TranscribableFileSource) => Promise<string>;
+type TranscriptionBackend = (file: TFile | TranscribableFileSource) => Promise<string>;
 
 
 export class TranscriptionEngine {

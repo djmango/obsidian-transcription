@@ -23,8 +23,7 @@ import { FileLink } from "./fileLink";
 import { 
     TranscribableFileSource, 
     ExternalFileSource, 
-    UrlFileSource, 
-    VaultFileSource 
+    UrlFileSource
 } from "./types/external-file";
 
 
