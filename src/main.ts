@@ -14,13 +14,10 @@ import {
 } from "obsidian";
 import { TranscriptionEngine } from "./transcribe";
 import { StatusBar } from "./status";
-import { createClient, User } from "@supabase/supabase-js";
 import {
     TranscriptionSettings,
     DEFAULT_SETTINGS,
-    TranscriptionSettingTab,
-    SUPABASE_URL,
-    SUPABASE_KEY
+    TranscriptionSettingTab
 } from "./settings";
 import { FileLink } from "./fileLink";
 
@@ -32,7 +29,6 @@ export default class Transcription extends Plugin {
     public static plugin: Plugin;
     public static children: Array<ChildProcess> = [];
     public transcriptionEngine: TranscriptionEngine;
-    public user: User | null;
 
     private pendingCommand: { file?: TFile; parentFile: TFile } | null = null;
     private ongoingTranscriptionTasks: Array<{
@@ -67,13 +63,6 @@ export default class Transcription extends Plugin {
         // Additional initialization if needed
     }
 
-    public supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: {
-            detectSessionInUrl: false,
-            autoRefreshToken: true,
-            persistSession: true,
-        },
-    });
 
 
 
@@ -84,17 +73,6 @@ export default class Transcription extends Plugin {
         parentFile: TFile;
     }) {
         try {
-            // Check if the user is authenticated
-            const session = await this.supabase.auth
-                .getSession()
-                .then((res) => {
-                    return res.data;
-                });
-
-            if (!session || !session.session) {
-                throw new Error("User not authenticated.");
-            }
-
             if (pendingCommand?.file) {
 
                 const abortController = new AbortController();

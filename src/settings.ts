@@ -18,8 +18,6 @@ interface TranscriptionSettings {
     wordTimestamps: boolean;
 }
 
-const SUPABASE_URL = "https://vcdeqgrsqaexpnogauly.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjZGVxZ3JzcWFleHBub2dhdWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODU2OTM4NDUsImV4cCI6MjAwMTI2OTg0NX0.BBxpvuejw_E-Q_g6SU6G6sGP_6r4KnrP-vHV2JZpAho";
 
 const DEFAULT_SETTINGS: TranscriptionSettings = {
     timestamps: false,
@@ -386,7 +384,5 @@ class TranscriptionSettingTab extends PluginSettingTab {
 export type { TranscriptionSettings };
 export {
     DEFAULT_SETTINGS,
-    TranscriptionSettingTab,
-    SUPABASE_URL,
-    SUPABASE_KEY
+    TranscriptionSettingTab
 };
