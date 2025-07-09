@@ -4,8 +4,9 @@ import { format } from "date-fns";
 import { PayloadData, payloadGenerator, preprocessWhisperASRResponse } from "src/utils";
 import { StatusBar } from "./status";
 import { WhisperASRResponse, WhisperASRSegment } from "./types/whisper-asr";
+import { TranscribableFileSource } from "./types/external-file";
 
-type TranscriptionBackend = (_file: TFile) => Promise<string>;
+type TranscriptionBackend = (_file: TFile | TranscribableFileSource) => Promise<string>;
 
 
 export class TranscriptionEngine {
@@ -91,7 +92,7 @@ export class TranscriptionEngine {
         }
     }
 
-    async getTranscription(file: TFile): Promise<string> {
+    async getTranscription(file: TFile | TranscribableFileSource): Promise<string> {
         if (this.settings.debug)
             console.log(
                 `Transcription engine: ${this.settings.transcriptionEngine}`,
@@ -111,11 +112,18 @@ export class TranscriptionEngine {
         });
     }
 
-    async getTranscriptionWhisperASR(file: TFile): Promise<string> {
+    async getTranscriptionWhisperASR(file: TFile | TranscribableFileSource): Promise<string> {
         const payload_data: PayloadData = {};
-        payload_data["audio_file"] = new Blob([
-            await this.vault.readBinary(file),
-        ]);
+        
+        // Handle different file source types
+        let fileData: ArrayBuffer;
+        if (file instanceof TFile) {
+            fileData = await this.vault.readBinary(file);
+        } else {
+            fileData = await file.getData();
+        }
+        
+        payload_data["audio_file"] = new Blob([fileData]);
         const [request_body, boundary_string] =
             await payloadGenerator(payload_data);
 
