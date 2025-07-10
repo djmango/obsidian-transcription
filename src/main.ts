@@ -193,7 +193,8 @@ export default class Transcription extends Plugin {
                         const regex = new RegExp(`\\[\\[([^\\]]*${escapedFileName})\\]\\]`);
                         const match = fileText.match(regex);
                         if (match) {
-                            startReplacementIndex = match.index!;
+                            // For regex match, set startReplacementIndex directly to after the ]]
+                            startReplacementIndex = match.index! + match[0].length;
                         }
                     }
                 }
@@ -203,13 +204,18 @@ export default class Transcription extends Plugin {
                 throw new Error(`Could not find link for file ${file.path} in parent file ${parent_file.path}`);
             }
 
-            // Find the end of the link
-            const linkEnd = fileText.indexOf(']]', startReplacementIndex);
-            if (linkEnd === -1) {
-                throw new Error(`Could not find end of link for file ${file.path} in parent file ${parent_file.path}`);
+            // Check if startReplacementIndex is already positioned after ]] (from regex match)
+            // by checking if we're immediately after a ]]
+            if (startReplacementIndex >= 2 && fileText.substring(startReplacementIndex - 2, startReplacementIndex) === ']]') {
+                // Already positioned after ]], no need to search for linkEnd
+            } else {
+                // Find the end of the link
+                const linkEnd = fileText.indexOf(']]', startReplacementIndex);
+                if (linkEnd === -1) {
+                    throw new Error(`Could not find end of link for file ${file.path} in parent file ${parent_file.path}`);
+                }
+                startReplacementIndex = linkEnd + 2; // Position after the ]]
             }
-
-            startReplacementIndex = linkEnd + 2; // Position after the ]]
 
             if (this.settings.lineSpacing === "single") {
                 fileText = [
