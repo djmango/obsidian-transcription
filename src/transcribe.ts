@@ -131,7 +131,7 @@ export class TranscriptionEngine {
         args += `&word_timestamps=true`; // always output word timestamps, so we can have the timestamps if we need them
         const { translate, encode, vadFilter, language, initialPrompt } = this.settings;
         if (translate) args += `&task=translate`;
-        if (encode !== DEFAULT_SETTINGS.encode) args += `&encode=${encode}`;
+        if (encode) args += `&encode=${encode}`;
         if (vadFilter !== DEFAULT_SETTINGS.vadFilter) args += `&vad_filter=${vadFilter}`;
         if (language !== DEFAULT_SETTINGS.language) args += `&language=${language}`;
         if (initialPrompt) args += `&initial_prompt=${initialPrompt}`;
